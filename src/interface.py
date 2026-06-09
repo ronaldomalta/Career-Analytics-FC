@@ -78,7 +78,7 @@ def tela_inicial():
     ctk.CTkButton(app, text="Listar Partidas", command=tela_listar_partidas).pack(pady=8)
     ctk.CTkButton(app, text="Gerenciar Carreiras", command=tela_gerenciar_carreiras).pack(pady=8)
 
-
+    
 def tela_gerenciar_carreiras():
     limpar_tela()
 
@@ -99,6 +99,69 @@ def tela_gerenciar_carreiras():
     mensagem = ctk.CTkLabel(app, text="")
     mensagem.pack(pady=8)
 
+    carreira_ativa = obter_carreira_ativa()
+
+    if carreira_ativa:
+        ctk.CTkLabel(
+            app,
+            text=f"Carreira ativa: {carreira_ativa['nome']}",
+            font=("Arial", 16, "bold")
+        ).pack(pady=10)
+
+        ctk.CTkLabel(
+            app,
+            text=f"Time atual: {carreira_ativa['time_atual'].title()}"
+        ).pack(pady=3)
+
+        selecao_texto = carreira_ativa["selecao_atual"].title() if carreira_ativa["selecao_atual"] else "Nenhuma"
+
+        ctk.CTkLabel(
+            app,
+            text=f"Seleção atual: {selecao_texto}"
+        ).pack(pady=3)
+
+        entrada_novo_time = ctk.CTkEntry(app, placeholder_text="Novo time atual", width=300)
+        entrada_novo_time.pack(pady=5)
+
+        entrada_nova_selecao = ctk.CTkEntry(app, placeholder_text="Nova seleção atual (opcional)", width=300)
+        entrada_nova_selecao.pack(pady=5)
+
+        mensagem_atualizacao = ctk.CTkLabel(app, text="")
+        mensagem_atualizacao.pack(pady=5)
+
+        def atualizar_carreira_ativa():
+            novo_time = entrada_novo_time.get().strip().lower()
+            nova_selecao = entrada_nova_selecao.get().strip().lower()
+
+            if not novo_time:
+                mensagem_atualizacao.configure(text="Digite o novo time.")
+                return
+
+            conexao = conectar()
+            cursor = conexao.cursor()
+
+            cursor.execute("""
+            UPDATE carreiras
+            SET time_atual = ?, selecao_atual = ?
+            WHERE id = ?
+            """, (
+                novo_time,
+                nova_selecao,
+                carreira_ativa["id"]
+            ))
+
+            conexao.commit()
+            conexao.close()
+
+            mensagem_atualizacao.configure(text="Carreira atualizada com sucesso!")
+            tela_gerenciar_carreiras()
+
+        ctk.CTkButton(
+            app,
+            text="Atualizar Time/Seleção",
+            command=atualizar_carreira_ativa
+        ).pack(pady=10)
+        
     def criar_carreira():
         nome = entrada_nome.get().strip()
         time_atual = entrada_time.get().strip().lower()
