@@ -68,6 +68,112 @@ def estatisticas_adversario():
     cursor.execute("""
     SELECT *
     FROM partidas
+    WHERE (time_casa = ? OR time_fora = ?)
+    AND (time_casa = ? OR time_fora = ?)
+    """, (MEU_TIME, MEU_TIME, adversario, adversario))
+
+    partidas = cursor.fetchall()
+    conexao.close()
+
+    if not partidas:
+        print(f"\nNenhuma partida encontrada contra {adversario.title()}.")
+        return
+
+    jogos = 0
+    vitorias = 0
+    empates = 0
+    derrotas = 0
+    gols_marcados = 0
+    gols_sofridos = 0
+
+    melhor_vitoria = None
+    melhor_saldo = None
+
+    pior_derrota = None
+    pior_saldo = None
+
+    ultimo_confronto = partidas[-1]
+
+    for partida in partidas:
+        _, _, casa, fora, gols_casa, gols_fora, _ = partida
+
+        jogos += 1
+
+        if casa == MEU_TIME:
+            meus_gols = gols_casa
+            gols_adv = gols_fora
+        else:
+            meus_gols = gols_fora
+            gols_adv = gols_casa
+
+        gols_marcados += meus_gols
+        gols_sofridos += gols_adv
+
+        saldo = meus_gols - gols_adv
+
+        if meus_gols > gols_adv:
+            vitorias += 1
+
+            if melhor_saldo is None or saldo > melhor_saldo:
+                melhor_saldo = saldo
+                melhor_vitoria = partida
+
+        elif meus_gols < gols_adv:
+            derrotas += 1
+
+            if pior_saldo is None or saldo < pior_saldo:
+                pior_saldo = saldo
+                pior_derrota = partida
+
+        else:
+            empates += 1
+
+    aproveitamento = ((vitorias * 3 + empates) / (jogos * 3)) * 100
+
+    print("\n===== ESTATÍSTICAS DO CONFRONTO =====")
+    print(f"Adversário: {adversario.title()}")
+    print(f"Jogos: {jogos}")
+    print(f"Vitórias: {vitorias}")
+    print(f"Empates: {empates}")
+    print(f"Derrotas: {derrotas}")
+    print(f"Gols marcados: {gols_marcados}")
+    print(f"Gols sofridos: {gols_sofridos}")
+    print(f"Aproveitamento: {aproveitamento:.1f}%")
+
+    print("\n----- RESUMO DO CONFRONTO -----")
+
+    if melhor_vitoria:
+        _, competicao, casa, fora, gols_casa, gols_fora, data = melhor_vitoria
+        print("\nMelhor vitória:")
+        print(f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()}")
+        print(f"{competicao} | {data}")
+    else:
+        print("\nMelhor vitória:")
+        print("Nenhuma vitória contra esse adversário.")
+
+    if pior_derrota:
+        _, competicao, casa, fora, gols_casa, gols_fora, data = pior_derrota
+        print("\nPior derrota:")
+        print(f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()}")
+        print(f"{competicao} | {data}")
+    else:
+        print("\nPior derrota:")
+        print("Nenhuma derrota contra esse adversário.")
+
+    _, competicao, casa, fora, gols_casa, gols_fora, data = ultimo_confronto
+    print("\nÚltimo confronto:")
+    print(f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()}")
+    print(f"{competicao} | {data}")
+    
+    
+
+def estatisticas_gerais():
+    conexao = sqlite3.connect(DB_PATH)
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    SELECT *
+    FROM partidas
     WHERE time_casa = ? OR time_fora = ?
     """, (MEU_TIME, MEU_TIME))
 
@@ -83,9 +189,6 @@ def estatisticas_adversario():
 
     for partida in partidas:
         _, _, casa, fora, gols_casa, gols_fora, _ = partida
-
-        if adversario not in [casa, fora]:
-            continue
 
         jogos += 1
 
@@ -106,14 +209,20 @@ def estatisticas_adversario():
         else:
             empates += 1
 
-    print("\n===== ESTATÍSTICAS =====")
-    print(f"Adversário: {adversario.title()}")
+    aproveitamento = 0
+
+    if jogos > 0:
+        aproveitamento = ((vitorias * 3) / (jogos * 3)) * 100
+
+    print("\n===== ESTATÍSTICAS GERAIS =====")
+    print(f"Time: {MEU_TIME.title()}")
     print(f"Jogos: {jogos}")
     print(f"Vitórias: {vitorias}")
     print(f"Empates: {empates}")
     print(f"Derrotas: {derrotas}")
-    print(f"Gols marcados: {gols_marcados}")
-    print(f"Gols sofridos: {gols_sofridos}")
+    print(f"Gols Marcados: {gols_marcados}")
+    print(f"Gols Sofridos: {gols_sofridos}")
+    print(f"Aproveitamento: {aproveitamento:.1f}%")
 
 
 def menu():
@@ -122,7 +231,8 @@ def menu():
         print("1 - Cadastrar partida")
         print("2 - Listar partidas")
         print("3 - Estatísticas por adversário")
-        print("4 - Sair")
+        print("4 - Estatísticas Gerais")
+        print("5 - Sair")
 
         opcao = input("Escolha uma opção: ")
 
@@ -133,6 +243,8 @@ def menu():
         elif opcao == "3":
             estatisticas_adversario()
         elif opcao == "4":
+            estatisticas_gerais()    
+        elif opcao == "5":
             print("Saindo do sistema...")
             break
         else:
