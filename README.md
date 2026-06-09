@@ -4,104 +4,162 @@ Aplicação para monitoramento e análise de carreiras no EA FC 26 através de c
 
 O objetivo do projeto é permitir que jogadores do Modo Carreira acompanhem automaticamente suas temporadas, estatísticas e histórico de partidas sem precisar registrar informações manualmente.
 
+---
+
 ## Status do Projeto
 
 🚧 Em desenvolvimento
 
-Atualmente o projeto está na fase inicial de pesquisa e desenvolvimento do sistema de captura e leitura de dados do jogo.
+Atualmente o projeto possui um sistema funcional de armazenamento e análise de partidas utilizando SQLite. As próximas etapas incluem captura de tela, OCR e automação da coleta de dados diretamente do EA FC 26.
+
+---
+
+## Funcionalidades Atuais
+
+### Sistema de Partidas
+
+* Cadastro manual de partidas
+* Armazenamento em SQLite
+* Listagem de partidas cadastradas
+* Estatísticas por adversário
+* Menu principal em terminal
+
+### Estatísticas Disponíveis
+
+* Jogos disputados contra um adversário
+* Vitórias
+* Empates
+* Derrotas
+* Gols marcados
+* Gols sofridos
+
+---
 
 ## Funcionalidades Planejadas
 
 ### Modo Carreira de Técnico
 
-- Registro automático de partidas
-- Identificação de clubes
-- Leitura de placares
-- Controle de vitórias, empates e derrotas
-- Histórico completo da temporada
-- Estatísticas de gols marcados e sofridos
-- Registro de títulos conquistados
-- Dashboard de desempenho
+* Registro automático de partidas
+* Identificação de clubes
+* Leitura automática de placares
+* Controle de vitórias, empates e derrotas
+* Histórico completo da temporada
+* Estatísticas de gols marcados e sofridos
+* Registro de títulos conquistados
+* Dashboard de desempenho
 
 ### Modo Carreira de Jogador
 
-- Estatísticas de gols
-- Estatísticas de assistências
-- Nota média das partidas
-- Evolução de Overall
-- Histórico de transferências
-- Conquistas e títulos
+* Estatísticas de gols
+* Estatísticas de assistências
+* Nota média das partidas
+* Evolução de Overall
+* Histórico de transferências
+* Conquistas e títulos
 
-### Estatísticas
+### Estatísticas Avançadas
 
-- Aproveitamento geral
-- Sequência de vitórias
-- Desempenho por competição
-- Desempenho por temporada
-- Comparação entre temporadas
-- Exportação de dados
+* Aproveitamento geral
+* Melhor vitória
+* Pior derrota
+* Sequência de vitórias
+* Ranking de adversários
+* Desempenho por competição
+* Desempenho por temporada
+* Comparação entre temporadas
+* Exportação de dados
+
+---
 
 ## Tecnologias
 
 ### Backend
 
-- Python
-
-### Processamento de Imagem
-
-- OpenCV
-- Tesseract OCR
+* Python 3
 
 ### Banco de Dados
 
-- SQLite
+* SQLite
+
+### Processamento de Imagem
+
+* OpenCV
+* Tesseract OCR
 
 ### Interface
 
-- A definir
+* Em definição
+
+---
 
 ## Roadmap
 
-### Versão 0.1
+### Versão 0.1 ✅ Concluída
 
-- [ ] Captura de tela automática
-- [ ] Identificação da tela pós-jogo
+* [x] Configuração do projeto
+* [x] Banco de dados SQLite
+* [x] Cadastro manual de partidas
+* [x] Listagem de partidas
+* [x] Estatísticas por adversário
+* [x] Menu principal em terminal
 
-### Versão 0.2
+### Versão 0.2 🚧 Em desenvolvimento
 
-- [ ] Leitura dos nomes dos clubes
-- [ ] Leitura do placar
-- [ ] Identificação de vitória, empate ou derrota
+* [ ] Estatísticas gerais
+* [ ] Melhor vitória
+* [ ] Pior derrota
+* [ ] Ranking de adversários
+* [ ] Histórico detalhado de confrontos
+* [ ] Configuração dinâmica do time do usuário
 
 ### Versão 0.3
 
-- [ ] Armazenamento das partidas em banco de dados
-- [ ] Histórico de partidas
+* [ ] Captura automática da tela do EA FC 26
+* [ ] Detecção da tela pós-jogo
+* [ ] Captura em memória (sem salvar imagens)
 
 ### Versão 0.4
 
-- [ ] Dashboard de estatísticas
-- [ ] Relatórios da temporada
+* [ ] OCR com Tesseract
+* [ ] Leitura automática dos nomes dos clubes
+* [ ] Leitura automática do placar
+* [ ] Registro automático das partidas
+
+### Versão 0.5
+
+* [ ] Integração com calendário da carreira
+* [ ] Integração com classificação das competições
+* [ ] Estatísticas completas da temporada
 
 ### Versão 1.0
 
-- [ ] Suporte completo ao Modo Carreira de Técnico
-- [ ] Instalador para Windows
-- [ ] Documentação completa
+* [ ] Dashboard gráfico
+* [ ] Exportação de dados
+* [ ] Instalador Windows
+* [ ] Documentação completa
+* [ ] Primeira versão pública
+
+---
 
 ## Estrutura do Projeto
 
 ```text
 fc-career-tracker/
+├── data/
+│   └── career_tracker.db
 ├── src/
+│   ├── main.py
+│   ├── database.py
+│   └── capture.py
 ├── tests/
 ├── docs/
-├── screenshots/
 ├── README.md
 ├── LICENSE
 ├── requirements.txt
 └── .gitignore
 ```
+
+---
 
 ## Aviso
 
@@ -109,6 +167,10 @@ Este projeto é independente e não possui qualquer vínculo com a EA Sports ou 
 
 EA FC é uma marca registrada da Electronic Arts.
 
+---
+
 ## Autor
 
 Desenvolvido por Ronaldo Malta.
+
+GitHub: @ronaldomalta
