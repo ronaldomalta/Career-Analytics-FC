@@ -103,20 +103,26 @@ Atualmente o projeto possui um sistema funcional de armazenamento e análise de 
 * [x] Estatísticas por adversário
 * [x] Menu principal em terminal
 
-### Versão 0.2 🚧 Em desenvolvimento
+### Versão 0.2 ✅ Concluída
 
-* [ ] Estatísticas gerais
-* [ ] Melhor vitória
-* [ ] Pior derrota
-* [ ] Ranking de adversários
-* [ ] Histórico detalhado de confrontos
+* [x] Estatísticas gerais
+* [x] Melhor vitória
+* [x] Pior derrota
+* [x] Histórico detalhado de confrontos
+* [x] Último confronto
+* [x] Estatísticas por competição
+* [x] Sequência de vitórias
+* [x] Sequência invicta
+* [x] Ordenação cronológica dos confrontos
+
+### Versão 0.3 🚧 Em desenvolvimento
+
+* [ ] Interface gráfica (CustomTkinter)
+* [ ] Cadastro de partidas pela interface
+* [ ] Estatísticas gerais pela interface
+* [ ] Consulta de adversários pela interface
 * [ ] Configuração dinâmica do time do usuário
-
-### Versão 0.3
-
-* [ ] Captura automática da tela do EA FC 26
-* [ ] Detecção da tela pós-jogo
-* [ ] Captura em memória (sem salvar imagens)
+* [ ] Navegação entre telas
 
 ### Versão 0.4
 
@@ -140,6 +146,16 @@ Atualmente o projeto possui um sistema funcional de armazenamento e análise de 
 * [ ] Primeira versão pública
 
 ---
+
+## Progresso Atual
+
+- Banco SQLite funcional
+- Cadastro de partidas
+- Listagem de partidas
+- Estatísticas gerais
+- Confrontos diretos
+- Histórico de partidas
+- Estatísticas por competição
 
 ## Estrutura do Projeto
 
