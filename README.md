@@ -115,14 +115,22 @@ Atualmente o projeto possui um sistema funcional de armazenamento e análise de 
 * [x] Sequência invicta
 * [x] Ordenação cronológica dos confrontos
 
-### Versão 0.3 🚧 Em desenvolvimento
+### Versão 0.3 ✅ Concluída
 
-* [ ] Interface gráfica (CustomTkinter)
-* [ ] Cadastro de partidas pela interface
-* [ ] Estatísticas gerais pela interface
-* [ ] Consulta de adversários pela interface
-* [ ] Configuração dinâmica do time do usuário
-* [ ] Navegação entre telas
+* [x] Interface gráfica (CustomTkinter)
+* [x] Cadastro de partidas pela interface
+* [x] Estatísticas gerais pela interface
+* [x] Consulta de adversários pela interface
+* [x] Configuração dinâmica do time do usuário
+* [x] Navegação entre telas
+* [x] Sistema de múltiplas carreiras
+* [x] Carreira ativa
+* [x] Histórico de clubes
+* [x] Histórico de seleções
+* [x] Alteração de clube durante a carreira
+* [x] Alteração de seleção durante a carreira
+* [x] Partidas vinculadas à carreira ativa
+* [x] Suporte para modo treinador
 
 ### Versão 0.4
 

@@ -77,27 +77,12 @@ def tela_inicial():
     ctk.CTkButton(app, text="Confronto Direto", command=tela_confronto_direto).pack(pady=8)
     ctk.CTkButton(app, text="Listar Partidas", command=tela_listar_partidas).pack(pady=8)
     ctk.CTkButton(app, text="Gerenciar Carreiras", command=tela_gerenciar_carreiras).pack(pady=8)
-
+    ctk.CTkButton(app, text="Histórico da Carreira", command=tela_historico_carreira).pack(pady=8)
     
 def tela_gerenciar_carreiras():
     limpar_tela()
 
     ctk.CTkLabel(app, text="Gerenciar Carreiras", font=("Arial", 24, "bold")).pack(pady=20)
-
-    entrada_nome = ctk.CTkEntry(app, placeholder_text="Nome da carreira", width=300)
-    entrada_nome.pack(pady=5)
-
-    entrada_time = ctk.CTkEntry(app, placeholder_text="Time atual", width=300)
-    entrada_time.pack(pady=5)
-
-    entrada_selecao = ctk.CTkEntry(app, placeholder_text="Seleção atual (opcional)", width=300)
-    entrada_selecao.pack(pady=5)
-
-    modo_var = ctk.StringVar(value="treinador")
-    ctk.CTkOptionMenu(app, values=["treinador"], variable=modo_var, width=300).pack(pady=5)
-
-    mensagem = ctk.CTkLabel(app, text="")
-    mensagem.pack(pady=8)
 
     carreira_ativa = obter_carreira_ativa()
 
@@ -126,19 +111,93 @@ def tela_gerenciar_carreiras():
         entrada_nova_selecao = ctk.CTkEntry(app, placeholder_text="Nova seleção atual (opcional)", width=300)
         entrada_nova_selecao.pack(pady=5)
 
+        entrada_data_troca = ctk.CTkEntry(app, placeholder_text="Data da troca AAAA-MM-DD", width=300)
+        entrada_data_troca.pack(pady=5)
+
         mensagem_atualizacao = ctk.CTkLabel(app, text="")
         mensagem_atualizacao.pack(pady=5)
 
         def atualizar_carreira_ativa():
             novo_time = entrada_novo_time.get().strip().lower()
             nova_selecao = entrada_nova_selecao.get().strip().lower()
+            data_troca = entrada_data_troca.get().strip()
+
+            if not data_troca:
+                mensagem_atualizacao.configure(text="Digite a data da troca.")
+                return
+
+            time_antigo = carreira_ativa["time_atual"]
+            selecao_antiga = carreira_ativa["selecao_atual"]
 
             if not novo_time:
-                mensagem_atualizacao.configure(text="Digite o novo time.")
-                return
+                novo_time = time_antigo
+
+            if nova_selecao == "":
+                nova_selecao = selecao_antiga
 
             conexao = conectar()
             cursor = conexao.cursor()
+
+            if novo_time != time_antigo:
+                cursor.execute("""
+                UPDATE historico_carreira
+                SET data_fim = ?
+                WHERE carreira_id = ?
+                AND tipo = ?
+                AND data_fim IS NULL
+                """, (
+                    data_troca,
+                    carreira_ativa["id"],
+                    "clube"
+                ))
+
+                cursor.execute("""
+                INSERT INTO historico_carreira (
+                    carreira_id,
+                    tipo,
+                    nome_time,
+                    data_inicio,
+                    data_fim
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """, (
+                    carreira_ativa["id"],
+                    "clube",
+                    novo_time,
+                    data_troca,
+                    None
+                ))
+
+            if nova_selecao != selecao_antiga:
+                cursor.execute("""
+                UPDATE historico_carreira
+                SET data_fim = ?
+                WHERE carreira_id = ?
+                AND tipo = ?
+                AND data_fim IS NULL
+                """, (
+                    data_troca,
+                    carreira_ativa["id"],
+                    "selecao"
+                ))
+
+                if nova_selecao:
+                    cursor.execute("""
+                    INSERT INTO historico_carreira (
+                        carreira_id,
+                        tipo,
+                        nome_time,
+                        data_inicio,
+                        data_fim
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """, (
+                        carreira_ativa["id"],
+                        "selecao",
+                        nova_selecao,
+                        data_troca,
+                        None
+                    ))
 
             cursor.execute("""
             UPDATE carreiras
@@ -153,7 +212,6 @@ def tela_gerenciar_carreiras():
             conexao.commit()
             conexao.close()
 
-            mensagem_atualizacao.configure(text="Carreira atualizada com sucesso!")
             tela_gerenciar_carreiras()
 
         ctk.CTkButton(
@@ -161,7 +219,24 @@ def tela_gerenciar_carreiras():
             text="Atualizar Time/Seleção",
             command=atualizar_carreira_ativa
         ).pack(pady=10)
-        
+
+    ctk.CTkLabel(app, text="Criar nova carreira", font=("Arial", 18, "bold")).pack(pady=10)
+
+    entrada_nome = ctk.CTkEntry(app, placeholder_text="Nome da carreira", width=300)
+    entrada_nome.pack(pady=5)
+
+    entrada_time = ctk.CTkEntry(app, placeholder_text="Time atual", width=300)
+    entrada_time.pack(pady=5)
+
+    entrada_selecao = ctk.CTkEntry(app, placeholder_text="Seleção atual (opcional)", width=300)
+    entrada_selecao.pack(pady=5)
+
+    modo_var = ctk.StringVar(value="treinador")
+    ctk.CTkOptionMenu(app, values=["treinador"], variable=modo_var, width=300).pack(pady=5)
+
+    mensagem = ctk.CTkLabel(app, text="")
+    mensagem.pack(pady=8)
+
     def criar_carreira():
         nome = entrada_nome.get().strip()
         time_atual = entrada_time.get().strip().lower()
@@ -186,6 +261,7 @@ def tela_gerenciar_carreiras():
         """, (nome, modo, time_atual, selecao_atual))
 
         carreira_id = cursor.lastrowid
+
         cursor.execute("""
         INSERT INTO historico_carreira (
             carreira_id,
@@ -272,11 +348,6 @@ def tela_gerenciar_carreiras():
             ).pack(side="right", padx=10)
 
     botao_voltar()
-
-
-def ativar_carreira(carreira_id):
-    salvar_carreira_ativa(carreira_id)
-    tela_inicial()
 
 
 def tela_cadastrar_partida():
@@ -624,6 +695,70 @@ def tela_confronto_direto():
     ctk.CTkButton(app, text="Buscar", command=buscar_confronto).pack(pady=10)
     botao_voltar()
 
+def tela_historico_carreira():
+    limpar_tela()
+
+    carreira = obter_carreira_ativa()
+
+    ctk.CTkLabel(app, text="Histórico da Carreira", font=("Arial", 24, "bold")).pack(pady=20)
+
+    if carreira is None:
+        ctk.CTkLabel(app, text="Nenhuma carreira ativa selecionada.").pack(pady=10)
+        botao_voltar()
+        return
+
+    ctk.CTkLabel(app, text=f"Carreira: {carreira['nome']}", font=("Arial", 16)).pack(pady=10)
+
+    conexao = conectar()
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    SELECT tipo, nome_time, data_inicio, data_fim
+    FROM historico_carreira
+    WHERE carreira_id = ?
+    ORDER BY id ASC
+    """, (carreira["id"],))
+
+    historicos = cursor.fetchall()
+    conexao.close()
+
+    if not historicos:
+        ctk.CTkLabel(app, text="Nenhum histórico cadastrado.").pack(pady=10)
+        botao_voltar()
+        return
+
+    frame = ctk.CTkScrollableFrame(app, width=800, height=400)
+    frame.pack(pady=10)
+
+    ctk.CTkLabel(frame, text="Clubes", font=("Arial", 18, "bold")).pack(pady=10)
+
+    encontrou_clube = False
+
+    for tipo, nome_time, data_inicio, data_fim in historicos:
+        if tipo == "clube":
+            encontrou_clube = True
+            fim = data_fim if data_fim else "Atual"
+            texto = f"{nome_time.title()} | {data_inicio} até {fim}"
+            ctk.CTkLabel(frame, text=texto).pack(pady=4)
+
+    if not encontrou_clube:
+        ctk.CTkLabel(frame, text="Nenhum clube registrado.").pack(pady=4)
+
+    ctk.CTkLabel(frame, text="Seleções", font=("Arial", 18, "bold")).pack(pady=15)
+
+    encontrou_selecao = False
+
+    for tipo, nome_time, data_inicio, data_fim in historicos:
+        if tipo == "selecao":
+            encontrou_selecao = True
+            fim = data_fim if data_fim else "Atual"
+            texto = f"{nome_time.title()} | {data_inicio} até {fim}"
+            ctk.CTkLabel(frame, text=texto).pack(pady=4)
+
+    if not encontrou_selecao:
+        ctk.CTkLabel(frame, text="Nenhuma seleção registrada.").pack(pady=4)
+
+    botao_voltar()
 
 def tela_listar_partidas():
     limpar_tela()
