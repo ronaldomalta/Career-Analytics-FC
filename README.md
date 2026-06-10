@@ -132,12 +132,15 @@ Atualmente o projeto possui um sistema funcional de armazenamento e análise de 
 * [x] Partidas vinculadas à carreira ativa
 * [x] Suporte para modo treinador
 
-### Versão 0.4
+### Versão 0.4 🚧 Em desenvolvimento
 
-* [ ] OCR com Tesseract
-* [ ] Leitura automática dos nomes dos clubes
-* [ ] Leitura automática do placar
-* [ ] Registro automático das partidas
+* [ ] Captura de tela em tempo real
+* [ ] OCR para leitura automática de partidas
+* [ ] Identificação automática de competição
+* [ ] Identificação automática de data
+* [ ] Identificação automática de times
+* [ ] Cadastro automático de partidas
+* [ ] Importação de partidas por imagem
 
 ### Versão 0.5
 
