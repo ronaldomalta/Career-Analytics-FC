@@ -15,4 +15,10 @@ cursor.execute("PRAGMA table_info(partidas)")
 for coluna in cursor.fetchall():
     print(coluna)
 
+print("\nTABELA HISTORICO_CARREIRA:")
+
+cursor.execute("PRAGMA table_info(historico_carreira)")
+
+for coluna in cursor.fetchall():
+    print(coluna)
 conexao.close()

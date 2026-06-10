@@ -186,6 +186,40 @@ def tela_gerenciar_carreiras():
         """, (nome, modo, time_atual, selecao_atual))
 
         carreira_id = cursor.lastrowid
+        cursor.execute("""
+        INSERT INTO historico_carreira (
+            carreira_id,
+            tipo,
+            nome_time,
+            data_inicio,
+            data_fim
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """, (
+            carreira_id,
+            "clube",
+            time_atual,
+            "inicio",
+            None
+        ))
+
+        if selecao_atual:
+            cursor.execute("""
+            INSERT INTO historico_carreira (
+                carreira_id,
+                tipo,
+                nome_time,
+                data_inicio,
+                data_fim
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """, (
+                carreira_id,
+                "selecao",
+                selecao_atual,
+                "inicio",
+                None
+            ))
 
         conexao.commit()
         conexao.close()

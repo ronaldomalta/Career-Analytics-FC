@@ -36,6 +36,19 @@ def criar_banco():
     )
     """)
 
+    cursor.execute("""
+CREATE TABLE IF NOT EXISTS historico_carreira (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    carreira_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    nome_time TEXT NOT NULL,
+    data_inicio TEXT,
+    data_fim TEXT,
+    FOREIGN KEY (carreira_id) REFERENCES carreiras(id)
+)
+""")
+
+
     conexao.commit()
     conexao.close()
 
