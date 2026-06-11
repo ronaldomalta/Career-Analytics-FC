@@ -1,6 +1,10 @@
 import re
 import pytesseract
 from PIL import Image
+import sqlite3
+from carreira_ativa import carregar_carreira_ativa
+
+DB_PATH = "data/career_tracker.db"
 
 pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -116,3 +120,49 @@ else:
     print(f"Fase: {partida['fase']}")
     print(f"Data: {partida['data']}")
     print(f"{partida['time_casa']} {partida['gols_casa']} x {partida['gols_fora']} {partida['time_fora']}")
+
+carreira_id = carregar_carreira_ativa()
+
+if carreira_id is None:
+    print("Erro: nenhuma carreira ativa selecionada.")
+else:
+    meu_time_na_partida = partida["time_fora"].lower()
+    tipo_time = "selecao"
+
+    conexao = sqlite3.connect(DB_PATH)
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    INSERT INTO partidas (
+        carreira_id,
+        meu_time_na_partida,
+        tipo_time,
+        competicao,
+        time_casa,
+        time_fora,
+        gols_casa,
+        gols_fora,
+        data_partida
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        carreira_id,
+        meu_time_na_partida,
+        tipo_time,
+        partida["competicao"],
+        partida["time_casa"].lower(),
+        partida["time_fora"].lower(),
+        partida["gols_casa"],
+        partida["gols_fora"],
+        partida["data"]
+    ))
+
+    conexao.commit()
+    conexao.close()
+
+    print("\nPartida salva no banco com sucesso!")
+    print("Carreira ID:", carreira_id)
+    print("Meu time na partida:", meu_time_na_partida)
+    print("Tipo:", tipo_time)
+
+    print("\nPartida salva no banco com sucesso!")
