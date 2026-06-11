@@ -21,4 +21,3 @@ if __name__ == "__main__":
 
     cv2.imshow("Captura em tempo real", frame)
     cv2.waitKey(0)
-    cv2.destroyAllWindows()
