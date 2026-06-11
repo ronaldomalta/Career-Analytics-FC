@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import sqlite3
 from carreira_ativa import carregar_carreira_ativa, salvar_carreira_ativa
+import subprocess
 
 DB_PATH = "data/career_tracker.db"
 
@@ -72,6 +73,7 @@ def tela_inicial():
 
     ctk.CTkLabel(app, text=texto, font=("Arial", 14)).pack(pady=15)
 
+    ctk.CTkButton(app, text="Importar Partida por OCR", command=tela_importar_ocr).pack(pady=8)
     ctk.CTkButton(app, text="Cadastrar Partida", command=tela_cadastrar_partida).pack(pady=8)
     ctk.CTkButton(app, text="Estatísticas Gerais", command=tela_estatisticas_gerais).pack(pady=8)
     ctk.CTkButton(app, text="Confronto Direto", command=tela_confronto_direto).pack(pady=8)
@@ -79,6 +81,36 @@ def tela_inicial():
     ctk.CTkButton(app, text="Gerenciar Carreiras", command=tela_gerenciar_carreiras).pack(pady=8)
     ctk.CTkButton(app, text="Histórico da Carreira", command=tela_historico_carreira).pack(pady=8)
     
+def tela_importar_ocr():
+    limpar_tela()
+
+    ctk.CTkLabel(app, text="Importar Partida por OCR", font=("Arial", 24, "bold")).pack(pady=20)
+
+    mensagem = ctk.CTkLabel(app, text="Use as imagens:")
+    mensagem.pack(pady=5)
+
+    ctk.CTkLabel(app, text="screenshots/pre_jogo.png").pack(pady=2)
+    ctk.CTkLabel(app, text="screenshots/pos_jogo.png").pack(pady=2)
+
+    resultado = ctk.CTkLabel(app, text="")
+    resultado.pack(pady=15)
+
+    def importar():
+        try:
+            subprocess.run(
+                ["python", "src/importar_partida.py"],
+                check=True
+            )
+
+            resultado.configure(text="Partida importada com sucesso!")
+
+        except Exception as erro:
+            resultado.configure(text=f"Erro ao importar partida: {erro}")
+
+    ctk.CTkButton(app, text="Importar Agora", command=importar).pack(pady=10)
+
+    botao_voltar()
+        
 def tela_gerenciar_carreiras():
     limpar_tela()
 
