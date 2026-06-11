@@ -1,7 +1,8 @@
 import re
+import sys
+import sqlite3
 import pytesseract
 from PIL import Image
-import sqlite3
 from carreira_ativa import carregar_carreira_ativa
 
 DB_PATH = "data/career_tracker.db"
@@ -9,9 +10,6 @@ DB_PATH = "data/career_tracker.db"
 pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 )
-
-PRE_JOGO = "screenshots/pre_jogo.png"
-POS_JOGO = "screenshots/pos_jogo.png"
 
 
 def limpar_texto_time(texto):
@@ -33,7 +31,6 @@ def limpar_texto_time(texto):
 
 def extrair_pre_jogo(caminho_imagem):
     imagem = Image.open(caminho_imagem)
-
     texto = pytesseract.image_to_string(imagem)
 
     linhas = []
@@ -83,54 +80,62 @@ def extrair_pos_jogo(caminho_imagem):
     gols_casa = int(resultado.group(1))
     gols_fora = int(resultado.group(2))
 
-    antes_placar = texto[:resultado.start()]
-    depois_placar = texto[resultado.end():]
+    return {
+        "gols_casa": gols_casa,
+        "gols_fora": gols_fora
+    }
 
-    antes_placar = re.sub(r"\d{1,3}:\d{2}\s*\w*", "", antes_placar)
 
-    time_casa = limpar_texto_time(antes_placar)
-    time_fora = limpar_texto_time(depois_placar)
+def extrair_partida(pre_jogo, pos_jogo):
+    dados_pre = extrair_pre_jogo(pre_jogo)
+    dados_pos = extrair_pos_jogo(pos_jogo)
+
+    if dados_pos is None:
+        return None
 
     return {
-        "time_casa": time_casa,
-        "gols_casa": gols_casa,
-        "gols_fora": gols_fora,
-        "time_fora": time_fora
+        "competicao": dados_pre["competicao"],
+        "fase": dados_pre["fase"],
+        "data": dados_pre["data"],
+        "time_casa": dados_pre["time_casa"],
+        "gols_casa": dados_pos["gols_casa"],
+        "gols_fora": dados_pos["gols_fora"],
+        "time_fora": dados_pre["time_fora"]
     }
 
 
-pre_jogo = extrair_pre_jogo(PRE_JOGO)
-pos_jogo = extrair_pos_jogo(POS_JOGO)
+def salvar_partida(partida):
+    carreira_id = carregar_carreira_ativa()
 
-if pos_jogo is None:
-    print("Erro: não foi possível extrair o placar do pós-jogo.")
-else:
-    partida = {
-        "competicao": pre_jogo["competicao"],
-        "fase": pre_jogo["fase"],
-        "data": pre_jogo["data"],
-        "time_casa": pre_jogo["time_casa"],
-        "gols_casa": pos_jogo["gols_casa"],
-        "gols_fora": pos_jogo["gols_fora"],
-        "time_fora": pre_jogo["time_fora"]
-    }
+    if carreira_id is None:
+        return False, "Nenhuma carreira ativa selecionada."
 
-    print("===== PARTIDA IMPORTADA =====")
-    print(f"Competição: {partida['competicao']}")
-    print(f"Fase: {partida['fase']}")
-    print(f"Data: {partida['data']}")
-    print(f"{partida['time_casa']} {partida['gols_casa']} x {partida['gols_fora']} {partida['time_fora']}")
-
-carreira_id = carregar_carreira_ativa()
-
-if carreira_id is None:
-    print("Erro: nenhuma carreira ativa selecionada.")
-else:
     meu_time_na_partida = partida["time_fora"].lower()
     tipo_time = "selecao"
 
     conexao = sqlite3.connect(DB_PATH)
     cursor = conexao.cursor()
+    cursor.execute("""
+    SELECT id
+    FROM partidas
+    WHERE carreira_id = ?
+    AND competicao = ?
+    AND data_partida = ?
+    AND time_casa = ?
+    AND time_fora = ?
+    """, (
+    carreira_id,
+    partida["competicao"],
+    partida["data"],
+    partida["time_casa"].lower(),
+    partida["time_fora"].lower()
+        ))
+
+    partida_existente = cursor.fetchone()
+
+    if partida_existente:
+        conexao.close()
+        return False, "Esta partida já foi importada."
 
     cursor.execute("""
     INSERT INTO partidas (
@@ -160,9 +165,27 @@ else:
     conexao.commit()
     conexao.close()
 
-    print("\nPartida salva no banco com sucesso!")
-    print("Carreira ID:", carreira_id)
-    print("Meu time na partida:", meu_time_na_partida)
-    print("Tipo:", tipo_time)
+    return True, "Partida salva no banco com sucesso."
 
-    print("\nPartida salva no banco com sucesso!")
+
+if __name__ == "__main__":
+    if len(sys.argv) >= 3:
+        pre_jogo = sys.argv[1]
+        pos_jogo = sys.argv[2]
+    else:
+        pre_jogo = "screenshots/pre_jogo.png"
+        pos_jogo = "screenshots/pos_jogo.png"
+
+    partida = extrair_partida(pre_jogo, pos_jogo)
+
+    if partida is None:
+        print("Erro: não foi possível extrair a partida.")
+    else:
+        print("===== PARTIDA IMPORTADA =====")
+        print(f"Competição: {partida['competicao']}")
+        print(f"Fase: {partida['fase']}")
+        print(f"Data: {partida['data']}")
+        print(f"{partida['time_casa']} {partida['gols_casa']} x {partida['gols_fora']} {partida['time_fora']}")
+
+        sucesso, mensagem = salvar_partida(partida)
+        print(mensagem)

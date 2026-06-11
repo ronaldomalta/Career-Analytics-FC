@@ -2,7 +2,7 @@ import customtkinter as ctk
 import sqlite3
 from carreira_ativa import carregar_carreira_ativa, salvar_carreira_ativa
 import subprocess
-
+from tkinter import filedialog
 DB_PATH = "data/career_tracker.db"
 
 ctk.set_appearance_mode("dark")
@@ -76,6 +76,7 @@ def tela_inicial():
     ctk.CTkButton(app, text="Importar Partida por OCR", command=tela_importar_ocr).pack(pady=8)
     ctk.CTkButton(app, text="Cadastrar Partida", command=tela_cadastrar_partida).pack(pady=8)
     ctk.CTkButton(app, text="Estatísticas Gerais", command=tela_estatisticas_gerais).pack(pady=8)
+    ctk.CTkButton(app, text="Estatísticas por Time", command=tela_estatisticas_por_time).pack(pady=8)
     ctk.CTkButton(app, text="Confronto Direto", command=tela_confronto_direto).pack(pady=8)
     ctk.CTkButton(app, text="Listar Partidas", command=tela_listar_partidas).pack(pady=8)
     ctk.CTkButton(app, text="Gerenciar Carreiras", command=tela_gerenciar_carreiras).pack(pady=8)
@@ -86,31 +87,110 @@ def tela_importar_ocr():
 
     ctk.CTkLabel(app, text="Importar Partida por OCR", font=("Arial", 24, "bold")).pack(pady=20)
 
-    mensagem = ctk.CTkLabel(app, text="Use as imagens:")
-    mensagem.pack(pady=5)
+    caminho_pre_jogo = ctk.StringVar(value="")
+    caminho_pos_jogo = ctk.StringVar(value="")
 
-    ctk.CTkLabel(app, text="screenshots/pre_jogo.png").pack(pady=2)
-    ctk.CTkLabel(app, text="screenshots/pos_jogo.png").pack(pady=2)
+    partida_extraida = {}
 
     resultado = ctk.CTkLabel(app, text="")
-    resultado.pack(pady=15)
+    resultado.pack(pady=10)
 
-    def importar():
+    previa = ctk.CTkLabel(app, text="", font=("Arial", 16))
+    previa.pack(pady=15)
+
+    def escolher_pre_jogo():
+        caminho = filedialog.askopenfilename(
+            title="Selecione a imagem pré-jogo",
+            filetypes=[
+                ("Imagens", "*.png *.jpg *.jpeg"),
+                ("Todos os arquivos", "*.*")
+            ]
+        )
+
+        if caminho:
+            caminho_pre_jogo.set(caminho)
+            label_pre.configure(text=f"Pré-jogo: {caminho}")
+
+    def escolher_pos_jogo():
+        caminho = filedialog.askopenfilename(
+            title="Selecione a imagem pós-jogo",
+            filetypes=[
+                ("Imagens", "*.png *.jpg *.jpeg"),
+                ("Todos os arquivos", "*.*")
+            ]
+        )
+
+        if caminho:
+            caminho_pos_jogo.set(caminho)
+            label_pos.configure(text=f"Pós-jogo: {caminho}")
+
+    def visualizar():
+        if not caminho_pre_jogo.get() or not caminho_pos_jogo.get():
+            resultado.configure(text="Selecione as duas imagens.")
+            return
+
         try:
-            subprocess.run(
-                ["python", "src/importar_partida.py"],
-                check=True
+            from importar_partida import extrair_partida
+
+            partida = extrair_partida(
+                caminho_pre_jogo.get(),
+                caminho_pos_jogo.get()
             )
 
-            resultado.configure(text="Partida importada com sucesso!")
+            if partida is None:
+                resultado.configure(text="Erro: não foi possível extrair a partida.")
+                return
+
+            partida_extraida.clear()
+            partida_extraida.update(partida)
+
+            texto_previa = (
+                f"Competição: {partida['competicao']}\n"
+                f"Fase: {partida['fase']}\n"
+                f"Data: {partida['data']}\n\n"
+                f"{partida['time_casa']} {partida['gols_casa']} x "
+                f"{partida['gols_fora']} {partida['time_fora']}"
+            )
+
+            previa.configure(text=texto_previa)
+            resultado.configure(text="Prévia gerada. Confira antes de salvar.")
 
         except Exception as erro:
-            resultado.configure(text=f"Erro ao importar partida: {erro}")
+            resultado.configure(text=f"Erro ao gerar prévia: {erro}")
 
-    ctk.CTkButton(app, text="Importar Agora", command=importar).pack(pady=10)
+    def confirmar_importacao():
+        if not partida_extraida:
+            resultado.configure(text="Gere a prévia antes de salvar.")
+            return
+
+        try:
+            from importar_partida import salvar_partida
+
+            sucesso, mensagem = salvar_partida(partida_extraida)
+
+            if sucesso:
+                resultado.configure(text="Partida salva com sucesso!")
+            else:
+                resultado.configure(text=f"Erro: {mensagem}")
+
+        except Exception as erro:
+            resultado.configure(text=f"Erro ao salvar partida: {erro}")
+
+    ctk.CTkButton(app, text="Selecionar imagem pré-jogo", command=escolher_pre_jogo).pack(pady=8)
+
+    label_pre = ctk.CTkLabel(app, text="Pré-jogo: nenhuma imagem selecionada")
+    label_pre.pack(pady=4)
+
+    ctk.CTkButton(app, text="Selecionar imagem pós-jogo", command=escolher_pos_jogo).pack(pady=8)
+
+    label_pos = ctk.CTkLabel(app, text="Pós-jogo: nenhuma imagem selecionada")
+    label_pos.pack(pady=4)
+
+    ctk.CTkButton(app, text="Gerar Prévia", command=visualizar).pack(pady=10)
+
+    ctk.CTkButton(app, text="Confirmar e Salvar", command=confirmar_importacao).pack(pady=10)
 
     botao_voltar()
-        
 def tela_gerenciar_carreiras():
     limpar_tela()
 
@@ -534,14 +614,21 @@ def tela_estatisticas_gerais():
 
     jogos = vitorias = empates = derrotas = 0
     gols_marcados = gols_sofridos = 0
+    jogos_clube = 0
+    jogos_selecao = 0
 
     for partida in partidas:
-        meu_time, _, _, casa, fora, gols_casa, gols_fora, _ = partida
+        meu_time, tipo_time, _, casa, fora, gols_casa, gols_fora, _ = partida
 
         if not meu_time or meu_time not in [casa, fora]:
             continue
 
         jogos += 1
+
+        if tipo_time == "clube":
+            jogos_clube += 1
+        elif tipo_time == "selecao":
+            jogos_selecao += 1
 
         meus_gols, gols_adv = calcular_resultado_partida(meu_time, casa, fora, gols_casa, gols_fora)
 
@@ -560,6 +647,8 @@ def tela_estatisticas_gerais():
     if jogos > 0:
         aproveitamento = ((vitorias * 3 + empates) / (jogos * 3)) * 100
 
+    saldo_gols = gols_marcados - gols_sofridos
+
     frame = ctk.CTkFrame(app, width=550)
     frame.pack(pady=20, padx=20)
 
@@ -570,6 +659,9 @@ def tela_estatisticas_gerais():
     ctk.CTkLabel(frame, text=f"Derrotas: {derrotas}").pack(pady=4)
     ctk.CTkLabel(frame, text=f"Gols Marcados: {gols_marcados}").pack(pady=4)
     ctk.CTkLabel(frame, text=f"Gols Sofridos: {gols_sofridos}").pack(pady=4)
+    ctk.CTkLabel(frame, text=f"Saldo de Gols: {saldo_gols}").pack(pady=4)
+    ctk.CTkLabel(frame, text=f"Jogos por Clube: {jogos_clube}").pack(pady=4)
+    ctk.CTkLabel(frame, text=f"Jogos por Seleção: {jogos_selecao}").pack(pady=4)
     ctk.CTkLabel(frame, text=f"Aproveitamento: {aproveitamento:.1f}%").pack(pady=10)
 
     botao_voltar()
@@ -791,6 +883,100 @@ def tela_historico_carreira():
         ctk.CTkLabel(frame, text="Nenhuma seleção registrada.").pack(pady=4)
 
     botao_voltar()
+
+def tela_estatisticas_por_time():
+    limpar_tela()
+
+    carreira = obter_carreira_ativa()
+
+    ctk.CTkLabel(app, text="Estatísticas por Time", font=("Arial", 24, "bold")).pack(pady=20)
+
+    if carreira is None:
+        ctk.CTkLabel(app, text="Nenhuma carreira ativa selecionada.").pack(pady=10)
+        botao_voltar()
+        return
+
+    conexao = conectar()
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    SELECT meu_time_na_partida, tipo_time, time_casa, time_fora, gols_casa, gols_fora
+    FROM partidas
+    WHERE carreira_id = ?
+    ORDER BY data_partida ASC
+    """, (carreira["id"],))
+
+    partidas = cursor.fetchall()
+    conexao.close()
+
+    estatisticas = {}
+
+    for partida in partidas:
+        meu_time, tipo_time, casa, fora, gols_casa, gols_fora = partida
+
+        if not meu_time or meu_time not in [casa, fora]:
+            continue
+
+        chave = (tipo_time, meu_time)
+
+        if chave not in estatisticas:
+            estatisticas[chave] = {
+                "jogos": 0,
+                "vitorias": 0,
+                "empates": 0,
+                "derrotas": 0,
+                "gols_marcados": 0,
+                "gols_sofridos": 0
+            }
+
+        meus_gols, gols_adv = calcular_resultado_partida(meu_time, casa, fora, gols_casa, gols_fora)
+
+        estatisticas[chave]["jogos"] += 1
+        estatisticas[chave]["gols_marcados"] += meus_gols
+        estatisticas[chave]["gols_sofridos"] += gols_adv
+
+        if meus_gols > gols_adv:
+            estatisticas[chave]["vitorias"] += 1
+        elif meus_gols < gols_adv:
+            estatisticas[chave]["derrotas"] += 1
+        else:
+            estatisticas[chave]["empates"] += 1
+
+    frame = ctk.CTkScrollableFrame(app, width=800, height=420)
+    frame.pack(pady=10)
+
+    for tipo_titulo in ["clube", "selecao"]:
+        titulo = "Clubes" if tipo_titulo == "clube" else "Seleções"
+
+        ctk.CTkLabel(frame, text=titulo, font=("Arial", 18, "bold")).pack(pady=12)
+
+        encontrou = False
+
+        for (tipo_time, nome_time), dados in estatisticas.items():
+            if tipo_time != tipo_titulo:
+                continue
+
+            encontrou = True
+
+            jogos = dados["jogos"]
+            pontos = dados["vitorias"] * 3 + dados["empates"]
+            aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
+            saldo = dados["gols_marcados"] - dados["gols_sofridos"]
+
+            texto = (
+                f"{nome_time.title()}\n"
+                f"Jogos: {jogos} | V: {dados['vitorias']} | E: {dados['empates']} | D: {dados['derrotas']}\n"
+                f"GM: {dados['gols_marcados']} | GS: {dados['gols_sofridos']} | SG: {saldo}\n"
+                f"Aproveitamento: {aproveitamento:.1f}%"
+            )
+
+            ctk.CTkLabel(frame, text=texto, justify="center").pack(pady=8)
+
+        if not encontrou:
+            ctk.CTkLabel(frame, text=f"Nenhum registro de {titulo.lower()}.").pack(pady=5)
+
+    botao_voltar()
+
 
 def tela_listar_partidas():
     limpar_tela()
