@@ -78,7 +78,9 @@ def tela_inicial():
     ctk.CTkButton(app, text="Estatísticas Gerais", command=tela_estatisticas_gerais).pack(pady=8)
     ctk.CTkButton(app, text="Estatísticas por Time", command=tela_estatisticas_por_time).pack(pady=8)
     ctk.CTkButton(app, text="Estatísticas por Competição", command=tela_estatisticas_por_competicao).pack(pady=8)
+    ctk.CTkButton(app, text="Últimas Partidas", command=tela_ultimas_partidas).pack(pady=8)
     ctk.CTkButton(app, text="Confronto Direto", command=tela_confronto_direto).pack(pady=8)
+    ctk.CTkButton(app, text="Melhor/Pior Jogo da Carreira", command=tela_melhor_pior_jogo).pack(pady=8)
     ctk.CTkButton(app, text="Listar Partidas", command=tela_listar_partidas).pack(pady=8)
     ctk.CTkButton(app, text="Gerenciar Carreiras", command=tela_gerenciar_carreiras).pack(pady=8)
     ctk.CTkButton(app, text="Histórico da Carreira", command=tela_historico_carreira).pack(pady=8)
@@ -1061,8 +1063,190 @@ def tela_estatisticas_por_competicao():
 
             ctk.CTkLabel(frame, text=texto, justify="center").pack(pady=10)
 
-    botao_voltar()    
+    botao_voltar() 
 
+def tela_ultimas_partidas():
+    limpar_tela()
+
+    carreira = obter_carreira_ativa()
+
+    ctk.CTkLabel(app, text="Últimas Partidas", font=("Arial", 24, "bold")).pack(pady=20)
+
+    if carreira is None:
+        ctk.CTkLabel(app, text="Nenhuma carreira ativa selecionada.").pack(pady=10)
+        botao_voltar()
+        return
+
+    conexao = conectar()
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    SELECT meu_time_na_partida, tipo_time, competicao, time_casa, time_fora, gols_casa, gols_fora, data_partida
+    FROM partidas
+    WHERE carreira_id = ?
+    ORDER BY data_partida DESC
+    LIMIT 5
+    """, (carreira["id"],))
+
+    partidas = cursor.fetchall()
+    conexao.close()
+
+    if not partidas:
+        ctk.CTkLabel(app, text="Nenhuma partida encontrada.").pack(pady=10)
+        botao_voltar()
+        return
+
+    jogos = 0
+    vitorias = 0
+    empates = 0
+    derrotas = 0
+    gols_marcados = 0
+    gols_sofridos = 0
+    forma = []
+
+    frame = ctk.CTkScrollableFrame(app, width=800, height=380)
+    frame.pack(pady=10)
+
+    for partida in partidas:
+        meu_time, tipo_time, competicao, casa, fora, gols_casa, gols_fora, data = partida
+
+        if not meu_time or meu_time not in [casa, fora]:
+            continue
+
+        jogos += 1
+
+        meus_gols, gols_adv = calcular_resultado_partida(
+            meu_time,
+            casa,
+            fora,
+            gols_casa,
+            gols_fora
+        )
+
+        gols_marcados += meus_gols
+        gols_sofridos += gols_adv
+
+        if meus_gols > gols_adv:
+            resultado = "V"
+            vitorias += 1
+        elif meus_gols < gols_adv:
+            resultado = "D"
+            derrotas += 1
+        else:
+            resultado = "E"
+            empates += 1
+
+        forma.append(resultado)
+
+        texto = (
+            f"{data} | {tipo_time} | {competicao}\n"
+            f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()} | Resultado: {resultado}"
+        )
+
+        ctk.CTkLabel(frame, text=texto, justify="center").pack(pady=8)
+
+    pontos = vitorias * 3 + empates
+    aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
+
+    resumo = (
+        f"Forma recente: {' '.join(forma)}\n"
+        f"Jogos: {jogos} | V: {vitorias} | E: {empates} | D: {derrotas}\n"
+        f"Gols Marcados: {gols_marcados} | Gols Sofridos: {gols_sofridos}\n"
+        f"Aproveitamento recente: {aproveitamento:.1f}%"
+    )
+
+    ctk.CTkLabel(app, text=resumo, font=("Arial", 15, "bold")).pack(pady=10)
+
+    botao_voltar()
+
+
+def tela_melhor_pior_jogo():
+    limpar_tela()
+
+    carreira = obter_carreira_ativa()
+
+    ctk.CTkLabel(app, text="Melhor e Pior Jogo da Carreira", font=("Arial", 24, "bold")).pack(pady=20)
+
+    if carreira is None:
+        ctk.CTkLabel(app, text="Nenhuma carreira ativa selecionada.").pack(pady=10)
+        botao_voltar()
+        return
+
+    conexao = conectar()
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    SELECT meu_time_na_partida, tipo_time, competicao, time_casa, time_fora, gols_casa, gols_fora, data_partida
+    FROM partidas
+    WHERE carreira_id = ?
+    ORDER BY data_partida ASC
+    """, (carreira["id"],))
+
+    partidas = cursor.fetchall()
+    conexao.close()
+
+    melhor_vitoria = None
+    melhor_saldo = None
+
+    pior_derrota = None
+    pior_saldo = None
+
+    for partida in partidas:
+        meu_time, tipo_time, competicao, casa, fora, gols_casa, gols_fora, data = partida
+
+        if not meu_time or meu_time not in [casa, fora]:
+            continue
+
+        meus_gols, gols_adv = calcular_resultado_partida(
+            meu_time,
+            casa,
+            fora,
+            gols_casa,
+            gols_fora
+        )
+
+        saldo = meus_gols - gols_adv
+
+        if saldo > 0:
+            if melhor_saldo is None or saldo > melhor_saldo:
+                melhor_saldo = saldo
+                melhor_vitoria = partida
+
+        elif saldo < 0:
+            if pior_saldo is None or saldo < pior_saldo:
+                pior_saldo = saldo
+                pior_derrota = partida
+
+    frame = ctk.CTkFrame(app, width=700)
+    frame.pack(pady=20, padx=20)
+
+    if melhor_vitoria:
+        meu_time, tipo_time, competicao, casa, fora, gols_casa, gols_fora, data = melhor_vitoria
+
+        texto = (
+            "Melhor vitória da carreira\n\n"
+            f"{data} | {tipo_time} | {competicao}\n"
+            f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()}"
+        )
+
+        ctk.CTkLabel(frame, text=texto, font=("Arial", 16, "bold")).pack(pady=15)
+    else:
+        ctk.CTkLabel(frame, text="Nenhuma vitória registrada.").pack(pady=15)
+
+    if pior_derrota:
+        meu_time, tipo_time, competicao, casa, fora, gols_casa, gols_fora, data = pior_derrota
+
+        texto = (
+            "Pior derrota da carreira\n\n"
+            f"{data} | {tipo_time} | {competicao}\n"
+            f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()}"
+        )
+
+        ctk.CTkLabel(frame, text=texto, font=("Arial", 16, "bold")).pack(pady=15)
+    else:
+        ctk.CTkLabel(frame, text="Nenhuma derrota registrada.").pack(pady=15)
+
+    botao_voltar()
 
 def tela_listar_partidas():
     limpar_tela()
