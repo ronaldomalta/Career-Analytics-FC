@@ -132,21 +132,37 @@ Atualmente o projeto possui um sistema funcional de armazenamento e análise de 
 * [x] Partidas vinculadas à carreira ativa
 * [x] Suporte para modo treinador
 
-### Versão 0.4 🚧 Em desenvolvimento
+### Versão 0.4 ✅ Concluída
 
+* [x] OCR para leitura automática de partidas
+* [x] Identificação automática de competição
+* [x] Identificação automática de data
+* [x] Identificação automática de times
+* [x] Cadastro automático de partidas
+* [x] Importação de partidas por imagem
 * [ ] Captura de tela em tempo real
-* [ ] OCR para leitura automática de partidas
-* [ ] Identificação automática de competição
-* [ ] Identificação automática de data
-* [ ] Identificação automática de times
-* [ ] Cadastro automático de partidas
-* [ ] Importação de partidas por imagem
 
-### Versão 0.5
+### Versão 0.5 🚧 Em desenvolvimento
 
+* [x] Estatísticas gerais da carreira
+* [x] Estatísticas por time
+* [x] Estatísticas por competição
+* [x] Últimas partidas / forma recente
+* [x] Melhor vitória e pior derrota da carreira
+* [x] Sistema de títulos
+* [x] Estatísticas de títulos
+* [x] Dashboard da carreira
 * [ ] Integração com calendário da carreira
 * [ ] Integração com classificação das competições
 * [ ] Estatísticas completas da temporada
+
+### Versão 0.6
+
+* [ ] Nova interface
+* [ ] Menu lateral
+* [ ] Agrupamento das estatísticas
+* [ ] Autocomplete de times e seleções
+* [ ] Escudos dos clubes e seleções
 
 ### Versão 1.0
 
@@ -155,6 +171,7 @@ Atualmente o projeto possui um sistema funcional de armazenamento e análise de 
 * [ ] Instalador Windows
 * [ ] Documentação completa
 * [ ] Primeira versão pública
+
 
 ---
 
