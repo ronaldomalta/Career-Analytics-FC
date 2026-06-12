@@ -81,6 +81,8 @@ def tela_inicial():
     ctk.CTkButton(app, text="Últimas Partidas", command=tela_ultimas_partidas).pack(pady=8)
     ctk.CTkButton(app, text="Confronto Direto", command=tela_confronto_direto).pack(pady=8)
     ctk.CTkButton(app, text="Melhor/Pior Jogo da Carreira", command=tela_melhor_pior_jogo).pack(pady=8)
+    ctk.CTkButton(app, text="Cadastrar Título", command=tela_cadastrar_titulo).pack(pady=8)
+    ctk.CTkButton(app, text="Títulos", command=tela_listar_titulos).pack(pady=8)
     ctk.CTkButton(app, text="Listar Partidas", command=tela_listar_partidas).pack(pady=8)
     ctk.CTkButton(app, text="Gerenciar Carreiras", command=tela_gerenciar_carreiras).pack(pady=8)
     ctk.CTkButton(app, text="Histórico da Carreira", command=tela_historico_carreira).pack(pady=8)
@@ -903,15 +905,23 @@ def tela_estatisticas_por_time():
     cursor = conexao.cursor()
 
     cursor.execute("""
-    SELECT meu_time_na_partida, tipo_time, time_casa, time_fora, gols_casa, gols_fora
-    FROM partidas
-    WHERE carreira_id = ?
-    ORDER BY data_partida ASC
-    """, (carreira["id"],))
+SELECT meu_time_na_partida, tipo_time, time_casa, time_fora, gols_casa, gols_fora
+FROM partidas
+WHERE carreira_id = ?
+ORDER BY data_partida ASC
+""", (carreira["id"],))
 
     partidas = cursor.fetchall()
-    conexao.close()
 
+    cursor.execute("""
+SELECT nome_time, COUNT(*)
+FROM titulos
+WHERE carreira_id = ?
+GROUP BY nome_time
+""", (carreira["id"],))
+
+    titulos_por_time = dict(cursor.fetchall())
+    conexao.close()
     estatisticas = {}
 
     for partida in partidas:
@@ -965,13 +975,14 @@ def tela_estatisticas_por_time():
             pontos = dados["vitorias"] * 3 + dados["empates"]
             aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
             saldo = dados["gols_marcados"] - dados["gols_sofridos"]
+            total_titulos = titulos_por_time.get(nome_time.lower(), 0)
 
             texto = (
                 f"{nome_time.title()}\n"
-                f"Jogos: {jogos} | V: {dados['vitorias']} | E: {dados['empates']} | D: {dados['derrotas']}\n"
+                f"Jogos: {jogos} | V: {dados['vitorias']} | E: {dados['empates']} | D: {dados['derrotas']} | T: {total_titulos}\n"
                 f"GM: {dados['gols_marcados']} | GS: {dados['gols_sofridos']} | SG: {saldo}\n"
                 f"Aproveitamento: {aproveitamento:.1f}%"
-            )
+            )   
 
             ctk.CTkLabel(frame, text=texto, justify="center").pack(pady=8)
 
@@ -1247,6 +1258,141 @@ def tela_melhor_pior_jogo():
         ctk.CTkLabel(frame, text="Nenhuma derrota registrada.").pack(pady=15)
 
     botao_voltar()
+
+def tela_cadastrar_titulo():
+    limpar_tela()
+
+    carreira = obter_carreira_ativa()
+
+    ctk.CTkLabel(app, text="Cadastrar Título", font=("Arial", 24, "bold")).pack(pady=20)
+
+    if carreira is None:
+        ctk.CTkLabel(app, text="Nenhuma carreira ativa selecionada.").pack(pady=10)
+        botao_voltar()
+        return
+
+    tipo_var = ctk.StringVar(value="clube")
+
+    ctk.CTkOptionMenu(app, values=["clube", "selecao"], variable=tipo_var, width=300).pack(pady=5)
+
+    entrada_time = ctk.CTkEntry(app, placeholder_text="Time/Seleção campeão", width=300)
+    entrada_time.pack(pady=5)
+
+    entrada_competicao = ctk.CTkEntry(app, placeholder_text="Competição", width=300)
+    entrada_competicao.pack(pady=5)
+
+    entrada_temporada = ctk.CTkEntry(app, placeholder_text="Temporada ex: 2026/27", width=300)
+    entrada_temporada.pack(pady=5)
+
+    entrada_data = ctk.CTkEntry(app, placeholder_text="Data da conquista AAAA-MM-DD", width=300)
+    entrada_data.pack(pady=5)
+
+    mensagem = ctk.CTkLabel(app, text="")
+    mensagem.pack(pady=10)
+
+    def salvar_titulo():
+        tipo_time = tipo_var.get()
+        nome_time = entrada_time.get().strip().lower()
+        competicao = entrada_competicao.get().strip()
+        temporada = entrada_temporada.get().strip()
+        data_conquista = entrada_data.get().strip()
+
+        if not nome_time or not competicao:
+            mensagem.configure(text="Preencha o time/seleção e a competição.")
+            return
+
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+        INSERT INTO titulos (
+            carreira_id,
+            tipo_time,
+            nome_time,
+            competicao,
+            temporada,
+            data_conquista
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            carreira["id"],
+            tipo_time,
+            nome_time,
+            competicao,
+            temporada,
+            data_conquista
+        ))
+
+        conexao.commit()
+        conexao.close()
+
+        mensagem.configure(text="Título cadastrado com sucesso!")
+
+        entrada_time.delete(0, "end")
+        entrada_competicao.delete(0, "end")
+        entrada_temporada.delete(0, "end")
+        entrada_data.delete(0, "end")
+
+    ctk.CTkButton(app, text="Salvar Título", command=salvar_titulo).pack(pady=10)
+
+    botao_voltar()
+
+def tela_listar_titulos():
+    limpar_tela()
+
+    carreira = obter_carreira_ativa()
+
+    ctk.CTkLabel(app, text="Títulos da Carreira", font=("Arial", 24, "bold")).pack(pady=20)
+
+    if carreira is None:
+        ctk.CTkLabel(app, text="Nenhuma carreira ativa selecionada.").pack(pady=10)
+        botao_voltar()
+        return
+
+    conexao = conectar()
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    SELECT tipo_time, competicao, COUNT(*) as total
+    FROM titulos
+    WHERE carreira_id = ?
+    GROUP BY tipo_time, competicao
+    ORDER BY tipo_time, competicao
+    """, (carreira["id"],))
+
+    titulos = cursor.fetchall()
+    conexao.close()
+
+    if not titulos:
+        ctk.CTkLabel(app, text="Nenhum título cadastrado.").pack(pady=10)
+        botao_voltar()
+        return
+
+    frame = ctk.CTkScrollableFrame(app, width=800, height=420)
+    frame.pack(pady=10)
+
+    for tipo_titulo in ["clube", "selecao"]:
+        titulo_secao = "Clubes" if tipo_titulo == "clube" else "Seleções"
+
+        ctk.CTkLabel(frame, text=titulo_secao, font=("Arial", 18, "bold")).pack(pady=12)
+
+        encontrou = False
+
+        for tipo_time, competicao, total in titulos:
+            if tipo_time != tipo_titulo:
+                continue
+
+            encontrou = True
+
+            texto = f"🏆 {total}x {competicao}"
+
+            ctk.CTkLabel(frame, text=texto, font=("Arial", 15)).pack(pady=5)
+
+        if not encontrou:
+            ctk.CTkLabel(frame, text=f"Nenhum título de {titulo_secao.lower()}.").pack(pady=5)
+
+    botao_voltar()
+
 
 def tela_listar_partidas():
     limpar_tela()

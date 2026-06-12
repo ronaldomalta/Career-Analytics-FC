@@ -48,6 +48,18 @@ CREATE TABLE IF NOT EXISTS historico_carreira (
 )
 """)
 
+    cursor.execute("""
+CREATE TABLE IF NOT EXISTS titulos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    carreira_id INTEGER NOT NULL,
+    tipo_time TEXT NOT NULL,
+    nome_time TEXT NOT NULL,
+    competicao TEXT NOT NULL,
+    temporada TEXT,
+    data_conquista TEXT,
+    FOREIGN KEY (carreira_id) REFERENCES carreiras(id)
+)
+""")
 
     conexao.commit()
     conexao.close()
