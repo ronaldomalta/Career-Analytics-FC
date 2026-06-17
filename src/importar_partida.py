@@ -7,53 +7,196 @@ from carreira_ativa import carregar_carreira_ativa
 
 DB_PATH = "data/career_tracker.db"
 
+DEBUG_OCR = False
+
 pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 )
 
 
-def limpar_texto_time(texto):
-    texto = texto.replace("_", " ")
-    texto = texto.replace("|", " ")
-    texto = texto.replace("]", " ")
-    texto = texto.replace("[", " ")
-    texto = texto.replace("s ", " ")
+def normalizar_nome_time(nome):
+    nome = nome.replace("_", " ")
+    nome = nome.replace("|", " ")
+    nome = nome.replace("]", " ")
+    nome = nome.replace("[", " ")
+    nome = nome.replace("º", "")
+    nome = nome.replace("°", "")
+    nome = re.sub(r"\d+", "", nome)
+    nome = nome.strip()
 
-    partes = texto.strip().split()
-    partes_limpas = []
+    return " ".join(nome.split()).title()
 
-    for parte in partes:
-        if not any(char.isdigit() for char in parte):
-            partes_limpas.append(parte)
 
-    return " ".join(partes_limpas).strip().title()
+def identificar_competicao(linha):
+    linha_upper = linha.upper()
+
+    if "COPA DO NORDESTE" in linha_upper:
+        return "Copa do Nordeste"
+
+    if "COPA DO BRASIL" in linha_upper:
+        return "Copa do Brasil"
+
+    if "COPA DO MUNDO" in linha_upper:
+        return "Copa do Mundo"
+
+    if "PERNAMBUCANO" in linha_upper:
+        return "Pernambucano"
+
+    if "BRASILEIR" in linha_upper:
+        return "Brasileirão"
+
+    return ""
+
+
+def limpar_linha_ocr(linha):
+    linha = linha.replace("|", " ")
+    linha = linha.replace("=", " ")
+    linha = linha.replace("_", " ")
+    linha = linha.strip()
+
+    return " ".join(linha.split())
 
 
 def extrair_pre_jogo(caminho_imagem):
     imagem = Image.open(caminho_imagem)
-    texto = pytesseract.image_to_string(imagem)
+
+    largura, altura = imagem.size
+
+    recorte = imagem.crop((
+        int(largura * 0.00),
+        int(altura * 0.05),
+        int(largura * 0.60),
+        int(altura * 0.55)
+    ))
+
+    texto = pytesseract.image_to_string(recorte)
 
     linhas = []
 
     for linha in texto.splitlines():
-        linha = linha.strip()
+        linha = limpar_linha_ocr(linha)
 
         if linha:
             linhas.append(linha)
 
-    data = linhas[0]
-    fase = linhas[1]
-    time_casa = linhas[-2].title()
-    time_fora = linhas[-1].title()
+    if DEBUG_OCR:
+        print("\n===== OCR PRÉ-JOGO =====")
+        for linha in linhas:
+            print(linha)
 
-    competicao = "Copa do Mundo"
+    data = ""
+    fase = ""
+    competicao = ""
+
+    for linha in linhas:
+        linha_upper = linha.upper()
+
+        if "," in linha and (
+            "DE" in linha_upper
+            or "JAN" in linha_upper
+            or "FEV" in linha_upper
+            or "MAR" in linha_upper
+            or "ABR" in linha_upper
+            or "MAI" in linha_upper
+            or "JUN" in linha_upper
+            or "JUL" in linha_upper
+            or "AGO" in linha_upper
+            or "SET" in linha_upper
+            or "OUT" in linha_upper
+            or "NOV" in linha_upper
+            or "DEZ" in linha_upper
+        ):
+            data = linha
+
+        if (
+            "RODADA" in linha_upper
+            or "OITAVAS" in linha_upper
+            or "QUARTAS" in linha_upper
+            or "SEMI" in linha_upper
+            or "FINAL" in linha_upper
+        ):
+            fase = linha
+
+        competicao_identificada = identificar_competicao(linha)
+
+        if competicao_identificada:
+            competicao = competicao_identificada
+
+    linhas_times = []
+
+    palavras_ignoradas = [
+        "DIA",
+        "JOGO",
+        "HOJE",
+        "RODADA",
+        "COPA",
+        "BRASILEIR",
+        "PERNAMBUCANO",
+        "MUNDIAL",
+        "ANÁLISE",
+        "ANALISE",
+        "TREINAMENTO",
+        "COLETIVA",
+        "TAREFAS",
+        "SELECIONAR",
+        "SAIR",
+        "FEED",
+        "NOTÍCIAS",
+        "NOTICIAS",
+        "TUTORIAIS",
+        "OPÇÕES",
+        "OPCOES",
+        "AVANÇO",
+        "AVANCO",
+        "FC HUB",
+        "INICIO",
+        "INÍCIO",
+        "CENTRAL",
+        "NOTIFICACOES",
+        "NOTIFICAÇÕES",
+        "ELENCO",
+        "TRANSFERENCIAS",
+        "TRANSFERÊNCIAS",
+        "ACADEMIA",
+        "ESCRITORIO",
+        "ESCRITÓRIO",
+        "PERSONALIZAR",
+    ]
+
+    for linha in linhas:
+        linha_upper = linha.upper()
+
+        if any(palavra in linha_upper for palavra in palavras_ignoradas):
+            continue
+
+        if "," in linha:
+            continue
+
+        if len(linha.strip()) >= 3:
+            linhas_times.append(linha.strip())
+
+    time_casa = ""
+    time_fora = ""
+
+    if len(linhas_times) >= 2:
+        time_casa = normalizar_nome_time(linhas_times[-2])
+        time_fora = normalizar_nome_time(linhas_times[-1])
+
+    if not competicao:
+        competicao = "Competição não identificada"
+
+    if not fase:
+        fase = "Fase não identificada"
+
+    if not data:
+        data = "Data não identificada"
 
     return {
         "data": data,
         "fase": fase,
         "competicao": competicao,
         "time_casa": time_casa,
-        "time_fora": time_fora
+        "time_fora": time_fora,
     }
 
 
@@ -63,15 +206,19 @@ def extrair_pos_jogo(caminho_imagem):
     largura, altura = imagem.size
 
     recorte = imagem.crop((
-        int(largura * 0.62),
-        int(altura * 0.03),
-        int(largura * 0.97),
-        int(altura * 0.15)
+        int(largura * 0.45),
+        int(altura * 0.00),
+        int(largura * 1.00),
+        int(altura * 0.22)
     ))
 
     texto = pytesseract.image_to_string(recorte)
 
-    padrao_placar = r"(\d+)\s*-\s*(\d+)"
+    if DEBUG_OCR:
+        print("\n===== OCR PÓS-JOGO =====")
+        print(texto)
+
+    padrao_placar = r"(\d+)\s*[-xX]\s*(\d+)"
     resultado = re.search(padrao_placar, texto)
 
     if not resultado:
@@ -82,7 +229,7 @@ def extrair_pos_jogo(caminho_imagem):
 
     return {
         "gols_casa": gols_casa,
-        "gols_fora": gols_fora
+        "gols_fora": gols_fora,
     }
 
 
@@ -93,6 +240,9 @@ def extrair_partida(pre_jogo, pos_jogo):
     if dados_pos is None:
         return None
 
+    if not dados_pre["time_casa"] or not dados_pre["time_fora"]:
+        return None
+
     return {
         "competicao": dados_pre["competicao"],
         "fase": dados_pre["fase"],
@@ -100,8 +250,51 @@ def extrair_partida(pre_jogo, pos_jogo):
         "time_casa": dados_pre["time_casa"],
         "gols_casa": dados_pos["gols_casa"],
         "gols_fora": dados_pos["gols_fora"],
-        "time_fora": dados_pre["time_fora"]
+        "time_fora": dados_pre["time_fora"],
     }
+
+
+def obter_carreira(carreira_id):
+    conexao = sqlite3.connect(DB_PATH)
+    cursor = conexao.cursor()
+
+    cursor.execute("""
+    SELECT time_atual, selecao_atual
+    FROM carreiras
+    WHERE id = ?
+    """, (carreira_id,))
+
+    carreira = cursor.fetchone()
+    conexao.close()
+
+    if not carreira:
+        return None
+
+    return {
+        "time_atual": carreira[0],
+        "selecao_atual": carreira[1],
+    }
+
+
+def definir_meu_time_e_tipo(partida, carreira_id):
+    carreira = obter_carreira(carreira_id)
+
+    if carreira is None:
+        return partida["time_fora"].lower(), "clube"
+
+    time_atual = carreira["time_atual"].lower() if carreira["time_atual"] else ""
+    selecao_atual = carreira["selecao_atual"].lower() if carreira["selecao_atual"] else ""
+
+    time_casa = partida["time_casa"].lower()
+    time_fora = partida["time_fora"].lower()
+
+    if time_casa == time_atual or time_fora == time_atual:
+        return time_atual, "clube"
+
+    if selecao_atual and (time_casa == selecao_atual or time_fora == selecao_atual):
+        return selecao_atual, "selecao"
+
+    return partida["time_fora"].lower(), "clube"
 
 
 def salvar_partida(partida):
@@ -110,11 +303,11 @@ def salvar_partida(partida):
     if carreira_id is None:
         return False, "Nenhuma carreira ativa selecionada."
 
-    meu_time_na_partida = partida["time_fora"].lower()
-    tipo_time = "selecao"
+    meu_time_na_partida, tipo_time = definir_meu_time_e_tipo(partida, carreira_id)
 
     conexao = sqlite3.connect(DB_PATH)
     cursor = conexao.cursor()
+
     cursor.execute("""
     SELECT id
     FROM partidas
@@ -124,12 +317,12 @@ def salvar_partida(partida):
     AND time_casa = ?
     AND time_fora = ?
     """, (
-    carreira_id,
-    partida["competicao"],
-    partida["data"],
-    partida["time_casa"].lower(),
-    partida["time_fora"].lower()
-        ))
+        carreira_id,
+        partida["competicao"],
+        partida["data"],
+        partida["time_casa"].lower(),
+        partida["time_fora"].lower(),
+    ))
 
     partida_existente = cursor.fetchone()
 
@@ -159,7 +352,7 @@ def salvar_partida(partida):
         partida["time_fora"].lower(),
         partida["gols_casa"],
         partida["gols_fora"],
-        partida["data"]
+        partida["data"],
     ))
 
     conexao.commit()
@@ -185,7 +378,10 @@ if __name__ == "__main__":
         print(f"Competição: {partida['competicao']}")
         print(f"Fase: {partida['fase']}")
         print(f"Data: {partida['data']}")
-        print(f"{partida['time_casa']} {partida['gols_casa']} x {partida['gols_fora']} {partida['time_fora']}")
+        print(
+            f"{partida['time_casa']} {partida['gols_casa']} x "
+            f"{partida['gols_fora']} {partida['time_fora']}"
+        )
 
         sucesso, mensagem = salvar_partida(partida)
         print(mensagem)

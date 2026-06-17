@@ -5,7 +5,7 @@ pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 )
 
-CAMINHO_IMAGEM = "screenshots/pre_jogo.png"
+CAMINHO_IMAGEM = "temp/pre_jogo.png"
 
 imagem = Image.open(CAMINHO_IMAGEM)
 
