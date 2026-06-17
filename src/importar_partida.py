@@ -366,8 +366,8 @@ if __name__ == "__main__":
         pre_jogo = sys.argv[1]
         pos_jogo = sys.argv[2]
     else:
-        pre_jogo = "screenshots/pre_jogo.png"
-        pos_jogo = "screenshots/pos_jogo.png"
+        pre_jogo = "temp/pre_jogo.png"
+        pos_jogo = "temp/pos_jogo.png"
 
     partida = extrair_partida(pre_jogo, pos_jogo)
 
