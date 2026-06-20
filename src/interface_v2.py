@@ -5,6 +5,7 @@ import pyautogui
 from datetime import datetime
 import shutil
 import csv
+import calendar
 
 from carreira_ativa import carregar_carreira_ativa
 from importar_partida import extrair_partida, salvar_partida
@@ -2017,62 +2018,244 @@ def tela_calendario():
         ).pack(pady=20)
         return
 
-    ctk.CTkLabel(
-        conteudo,
-        text=f"Carreira ativa: {carreira['nome']}",
-        font=("Arial", 15)
-    ).pack(anchor="w", padx=25, pady=(0, 15))
+    meses = {
+        "Janeiro": "JAN",
+        "Fevereiro": "FEV",
+        "Março": "MAR",
+        "Abril": "ABR",
+        "Maio": "MAI",
+        "Junho": "JUN",
+        "Julho": "JUL",
+        "Agosto": "AGO",
+        "Setembro": "SET",
+        "Outubro": "OUT",
+        "Novembro": "NOV",
+        "Dezembro": "DEZ"
+    }
 
-    conexao = conectar()
-    cursor = conexao.cursor()
+    mes_numero = {
+        "Janeiro": 1,
+        "Fevereiro": 2,
+        "Março": 3,
+        "Abril": 4,
+        "Maio": 5,
+        "Junho": 6,
+        "Julho": 7,
+        "Agosto": 8,
+        "Setembro": 9,
+        "Outubro": 10,
+        "Novembro": 11,
+        "Dezembro": 12
+    }
 
-    cursor.execute("""
-    SELECT data_partida, competicao, time_casa, gols_casa, gols_fora, time_fora
-    FROM partidas
-    WHERE carreira_id = ?
-    ORDER BY id DESC
-    """, (carreira["id"],))
+    anos = ["2026", "2027", "2028", "2029", "2030"]
+    ano_var = ctk.StringVar(value="2026")
+    mes_var = ctk.StringVar(value="Janeiro")
 
-    partidas = cursor.fetchall()
-    conexao.close()
+    filtros = ctk.CTkFrame(conteudo, fg_color="transparent")
+    filtros.pack(anchor="w", padx=25, pady=10)
 
-    frame_lista = ctk.CTkScrollableFrame(conteudo, width=850, height=520)
-    frame_lista.pack(fill="both", expand=True, padx=25, pady=10)
+    ctk.CTkOptionMenu(
+        filtros,
+        values=anos,
+        variable=ano_var,
+        width=120
+    ).pack(side="left", padx=5)
 
-    if not partidas:
+    ctk.CTkOptionMenu(
+        filtros,
+        values=list(meses.keys()),
+        variable=mes_var,
+        width=160
+    ).pack(side="left", padx=5)
+
+    area_calendario = ctk.CTkFrame(conteudo, fg_color="transparent")
+    area_calendario.pack(fill="both", expand=True, padx=25, pady=10)
+
+    def limpar_calendario():
+        for widget in area_calendario.winfo_children():
+            widget.destroy()
+
+    def extrair_dia_mes_ano(data_texto):
+        if not data_texto:
+            return None, None, None
+
+        texto = data_texto.upper()
+
+        ano_encontrado = None
+        for ano in anos:
+            if ano in texto:
+                ano_encontrado = ano
+                break
+
+        dia_encontrado = None
+        partes = texto.replace(",", " ").replace("/", " ").split()
+
+        for parte in partes:
+            if parte.isdigit():
+                numero = int(parte)
+                if 1 <= numero <= 31:
+                    dia_encontrado = numero
+                    break
+
+        mes_encontrado = None
+        for nome_mes, sigla in meses.items():
+            if sigla in texto:
+                mes_encontrado = nome_mes
+                break
+
+        return dia_encontrado, mes_encontrado, ano_encontrado
+
+    def carregar_partidas():
+        limpar_calendario()
+
+        ano = ano_var.get()
+        mes = mes_var.get()
+        numero_mes = mes_numero[mes]
+
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+        SELECT meu_time_na_partida, competicao, time_casa, gols_casa, gols_fora, time_fora, data_partida
+        FROM partidas
+        WHERE carreira_id = ?
+        ORDER BY id ASC
+        """, (carreira["id"],))
+
+        partidas = cursor.fetchall()
+        conexao.close()
+
+        partidas_por_dia = {}
+
+        for meu_time, competicao, casa, gols_casa, gols_fora, fora, data in partidas:
+            dia, mes_detectado, ano_detectado = extrair_dia_mes_ano(data)
+
+            if dia is None or mes_detectado is None or ano_detectado is None:
+                continue
+
+            if ano_detectado != ano or mes_detectado != mes:
+                continue
+
+            meus_gols, gols_adv = calcular_resultado_partida(
+                meu_time,
+                casa,
+                fora,
+                gols_casa,
+                gols_fora
+            )
+
+            if meus_gols > gols_adv:
+                resultado = "V"
+                cor = "#28a745"
+            elif meus_gols < gols_adv:
+                resultado = "D"
+                cor = "#dc3545"
+            else:
+                resultado = "E"
+                cor = "#ffc107"
+
+            partidas_por_dia[dia] = {
+                "competicao": competicao,
+                "casa": casa,
+                "fora": fora,
+                "placar": f"{gols_casa}x{gols_fora}",
+                "resultado": resultado,
+                "cor": cor
+            }
+
         ctk.CTkLabel(
-            frame_lista,
-            text="Nenhuma partida cadastrada no calendário.",
-            font=("Arial", 15)
-        ).pack(pady=20)
-        return
+            area_calendario,
+            text=f"{mes} {ano}",
+            font=("Arial", 24, "bold")
+        ).pack(pady=(5, 15))
 
-    data_atual = None
+        dias_semana = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"]
 
-    for data, competicao, casa, gols_casa, gols_fora, fora in partidas:
-        if data != data_atual:
-            data_atual = data
+        header = ctk.CTkFrame(area_calendario, fg_color="transparent")
+        header.pack(fill="x")
 
+        for dia_semana in dias_semana:
             ctk.CTkLabel(
-                frame_lista,
-                text=data,
-                font=("Arial", 20, "bold")
-            ).pack(anchor="w", padx=10, pady=(18, 8))
+                header,
+                text=dia_semana,
+                font=("Arial", 14, "bold"),
+                width=110
+            ).pack(side="left", padx=3)
 
-        card_jogo = ctk.CTkFrame(frame_lista, corner_radius=12)
-        card_jogo.pack(fill="x", padx=10, pady=5)
-
-        texto = (
-            f"{competicao}\n"
-            f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()}"
+        calendario_mes = calendar.Calendar(firstweekday=6).monthdayscalendar(
+            int(ano),
+            numero_mes
         )
 
+        for semana in calendario_mes:
+            linha = ctk.CTkFrame(area_calendario, fg_color="transparent")
+            linha.pack(fill="x", pady=3)
+
+            for dia in semana:
+                card_dia = ctk.CTkFrame(
+                    linha,
+                    width=110,
+                    height=95,
+                    corner_radius=8
+                )
+                card_dia.pack(side="left", padx=3)
+                card_dia.pack_propagate(False)
+
+                if dia == 0:
+                    ctk.CTkLabel(card_dia, text="").pack()
+                    continue
+
+                ctk.CTkLabel(
+                    card_dia,
+                    text=str(dia),
+                    font=("Arial", 13, "bold")
+                ).pack(anchor="nw", padx=6, pady=(5, 0))
+
+                if dia in partidas_por_dia:
+                    jogo = partidas_por_dia[dia]
+
+                    ctk.CTkLabel(
+                        card_dia,
+                        text=f"{jogo['casa'].title()}",
+                        font=("Arial", 10)
+                    ).pack(pady=(3, 0))
+
+                    ctk.CTkLabel(
+                        card_dia,
+                        text=jogo["placar"],
+                        font=("Arial", 13, "bold")
+                    ).pack()
+
+                    badge = ctk.CTkFrame(
+                        card_dia,
+                        fg_color=jogo["cor"],
+                        corner_radius=6
+                    )
+                    badge.pack(pady=3)
+
+                    ctk.CTkLabel(
+                        badge,
+                        text=jogo["resultado"],
+                        text_color="white",
+                        font=("Arial", 11, "bold"),
+                        width=28
+                    ).pack()
+
         ctk.CTkLabel(
-            card_jogo,
-            text=texto,
-            justify="left",
-            font=("Arial", 15)
-        ).pack(anchor="w", padx=15, pady=10)
+            area_calendario,
+            text="Legenda: V = vitória | E = empate | D = derrota",
+            font=("Arial", 13)
+        ).pack(pady=10)
+
+    ctk.CTkButton(
+        filtros,
+        text="Atualizar",
+        command=carregar_partidas,
+        width=120
+    ).pack(side="left", padx=5)
+
+    carregar_partidas()
 
 
 def tela_configuracoes():
