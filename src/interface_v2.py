@@ -67,6 +67,23 @@ def card(parent, titulo, valor):
     ctk.CTkLabel(frame, text=titulo, font=("Arial", 13)).pack(pady=(15, 5))
     ctk.CTkLabel(frame, text=valor, font=("Arial", 26, "bold")).pack(pady=(0, 15))
 
+def mini_card(pai, titulo, valor):
+    frame = ctk.CTkFrame(pai, corner_radius=10, width=150, height=70)
+    frame.pack(side="left", padx=6, pady=5)
+    frame.pack_propagate(False)
+
+    ctk.CTkLabel(
+        frame,
+        text=titulo,
+        font=("Arial", 12)
+    ).pack(pady=(8, 0))
+
+    ctk.CTkLabel(
+        frame,
+        text=valor,
+        font=("Arial", 18, "bold")
+    ).pack(pady=(2, 8))   
+
 def calcular_resultado_partida(meu_time, time_casa, time_fora, gols_casa, gols_fora):
     if meu_time == time_casa:
         return gols_casa, gols_fora
@@ -799,28 +816,33 @@ def tela_estatisticas():
             aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
             saldo = dados["gols_marcados"] - dados["gols_sofridos"]
 
-            texto = (
-                f"{competicao}\n"
-                f"Jogos: {jogos} | V: {dados['vitorias']} | "
-                f"E: {dados['empates']} | D: {dados['derrotas']}\n"
-                f"GM: {dados['gols_marcados']} | "
-                f"GS: {dados['gols_sofridos']} | "
-                f"SG: {saldo}\n"
-                f"Aproveitamento: {aproveitamento:.1f}%"
-            )
-
             card_competicao = ctk.CTkFrame(
-                frame_lista,
-                corner_radius=12
-            )
-            card_competicao.pack(fill="x", padx=10, pady=8)
+            frame_lista,
+            corner_radius=12
+)
+        card_competicao.pack(fill="x", padx=10, pady=8)
 
-            ctk.CTkLabel(
-                card_competicao,
-                text=texto,
-                justify="left",
-                font=("Arial", 15)
-            ).pack(anchor="w", padx=15, pady=12)
+        ctk.CTkLabel(
+            card_competicao,
+            text=f"🏆 {competicao.title()}",
+            font=("Arial", 20, "bold")
+        ).pack(anchor="w", padx=15, pady=(12, 8))
+
+        linha_cards = ctk.CTkFrame(card_competicao, fg_color="transparent")
+        linha_cards.pack(fill="x", padx=10, pady=(0, 8))
+
+        mini_card(linha_cards, "Jogos", str(jogos))
+        mini_card(linha_cards, "Vitórias", str(dados["vitorias"]))
+        mini_card(linha_cards, "Empates", str(dados["empates"]))
+        mini_card(linha_cards, "Derrotas", str(dados["derrotas"]))
+
+        linha_cards_2 = ctk.CTkFrame(card_competicao, fg_color="transparent")
+        linha_cards_2.pack(fill="x", padx=10, pady=(0, 8))
+
+        mini_card(linha_cards_2, "GM", str(dados["gols_marcados"]))
+        mini_card(linha_cards_2, "GS", str(dados["gols_sofridos"]))
+        mini_card(linha_cards_2, "SG", str(saldo))
+        mini_card(linha_cards_2, "Aproveit.", f"{aproveitamento:.1f}%")
 
     def mostrar_por_temporada():
         limpar_area()
@@ -910,7 +932,325 @@ def tela_estatisticas():
                 font=("Arial", 15)
             ).pack(anchor="w", padx=15, pady=12)
         
+    def mostrar_confronto_direto():
+        limpar_area()
 
+        ctk.CTkLabel(
+            area_estatisticas,
+            text="Confronto Direto",
+            font=("Arial", 22, "bold")
+        ).pack(anchor="w", padx=25, pady=(10, 5))
+
+        frame_busca = ctk.CTkFrame(
+            area_estatisticas,
+            fg_color="transparent"
+        )
+        frame_busca.pack(anchor="w", padx=25, pady=8)
+
+        entrada_busca = ctk.CTkEntry(
+            frame_busca,
+            placeholder_text="Digite parte do nome do adversário. Ex: N",
+            width=350
+        )
+        entrada_busca.pack(side="left", padx=(0, 10))
+
+        frame_resultados = ctk.CTkScrollableFrame(
+            area_estatisticas,
+            width=850,
+            height=450
+        )
+        frame_resultados.pack(fill="both", expand=True, padx=25, pady=10)
+
+        def limpar_resultados():
+            for widget in frame_resultados.winfo_children():
+                widget.destroy()
+
+        def buscar_adversarios():
+            limpar_resultados()
+
+            termo = entrada_busca.get().strip().lower()
+
+            if not termo:
+                ctk.CTkLabel(
+                    frame_resultados,
+                    text="Digite algo para buscar um adversário."
+                ).pack(pady=20)
+                return
+
+            conexao = conectar()
+            cursor = conexao.cursor()
+
+            cursor.execute("""
+            SELECT DISTINCT meu_time_na_partida, time_casa, time_fora
+            FROM partidas
+            WHERE carreira_id = ?
+            """, (carreira["id"],))
+
+            partidas = cursor.fetchall()
+            conexao.close()
+
+            adversarios = set()
+
+            for meu_time, casa, fora in partidas:
+                if not meu_time or not casa or not fora:
+                    continue
+
+                meu_time_lower = meu_time.lower()
+                casa_lower = casa.lower()
+                fora_lower = fora.lower()
+
+                if meu_time_lower == casa_lower:
+                    adversario = fora
+                elif meu_time_lower == fora_lower:
+                    adversario = casa
+                else:
+                    continue
+
+                if termo in adversario.lower():
+                    adversarios.add(adversario)
+
+            if not adversarios:
+                ctk.CTkLabel(
+                    frame_resultados,
+                    text="Nenhum adversário encontrado."
+                ).pack(pady=20)
+                return
+
+            for adversario in sorted(adversarios):
+                card_adv = ctk.CTkFrame(frame_resultados, corner_radius=12)
+                card_adv.pack(fill="x", padx=10, pady=6)
+
+                ctk.CTkLabel(
+                    card_adv,
+                    text=adversario.title(),
+                    font=("Arial", 16, "bold")
+                ).pack(side="left", padx=15, pady=12)
+
+                ctk.CTkButton(
+                    card_adv,
+                    text="Ver Estatísticas",
+                    width=150,
+                    command=lambda adv=adversario: mostrar_estatisticas_adversario(adv)
+                ).pack(side="right", padx=15, pady=10)
+
+        def limpar_resultados():
+            for widget in frame_resultados.winfo_children():
+                widget.destroy()
+
+        def buscar_adversarios():
+            limpar_resultados()
+
+            termo = entrada_busca.get().strip().lower()
+
+            if not termo:
+                ctk.CTkLabel(
+                    frame_resultados,
+                    text="Digite algo para buscar um adversário."
+                ).pack(pady=20)
+                return
+
+            conexao = conectar()
+            cursor = conexao.cursor()
+
+            cursor.execute("""
+            SELECT DISTINCT meu_time_na_partida, time_casa, time_fora
+            FROM partidas
+            WHERE carreira_id = ?
+            """, (carreira["id"],))
+
+            partidas = cursor.fetchall()
+            conexao.close()
+
+            adversarios = set()
+
+            for meu_time, casa, fora in partidas:
+                if not meu_time or not casa or not fora:
+                    continue
+
+                meu_time_lower = meu_time.lower()
+                casa_lower = casa.lower()
+                fora_lower = fora.lower()
+
+                if meu_time_lower == casa_lower:
+                    adversario = fora
+                elif meu_time_lower == fora_lower:
+                    adversario = casa
+                else:
+                    continue
+
+                if termo in adversario.lower():
+                    adversarios.add(adversario)
+
+            if not adversarios:
+                ctk.CTkLabel(
+                    frame_resultados,
+                    text="Nenhum adversário encontrado."
+                ).pack(pady=20)
+                return
+
+            for adversario in sorted(adversarios):
+                card_adv = ctk.CTkFrame(frame_resultados, corner_radius=12)
+                card_adv.pack(fill="x", padx=10, pady=6)
+
+                ctk.CTkLabel(
+                    card_adv,
+                    text=adversario.title(),
+                    font=("Arial", 16, "bold")
+                ).pack(side="left", padx=15, pady=12)
+
+                ctk.CTkButton(
+                    card_adv,
+                    text="Ver Estatísticas",
+                    width=150,
+                    command=lambda adv=adversario: mostrar_estatisticas_adversario(adv)
+                ).pack(side="right", padx=15, pady=10)
+
+        def mostrar_estatisticas_adversario(adversario):
+            limpar_resultados()
+
+            conexao = conectar()
+            cursor = conexao.cursor()
+
+            cursor.execute("""
+            SELECT meu_time_na_partida, competicao, time_casa, time_fora, gols_casa, gols_fora, data_partida
+            FROM partidas
+            WHERE carreira_id = ?
+            ORDER BY id DESC
+            """, (carreira["id"],))
+
+            partidas = cursor.fetchall()
+            conexao.close()
+
+            jogos = vitorias = empates = derrotas = 0
+            gols_marcados = gols_sofridos = 0
+            historico = []
+
+            for meu_time, competicao, casa, fora, gols_casa, gols_fora, data in partidas:
+                if not meu_time or not casa or not fora:
+                    continue
+
+                meu_time_lower = meu_time.lower()
+                adversario_lower = adversario.lower()
+                casa_lower = casa.lower()
+                fora_lower = fora.lower()
+
+                if adversario_lower not in [casa_lower, fora_lower]:
+                    continue
+
+                if meu_time_lower not in [casa_lower, fora_lower]:
+                    continue
+
+                meus_gols, gols_adv = calcular_resultado_partida(
+                    meu_time,
+                    casa,
+                    fora,
+                    gols_casa,
+                    gols_fora
+                )
+
+                jogos += 1
+                gols_marcados += meus_gols
+                gols_sofridos += gols_adv
+
+                if meus_gols > gols_adv:
+                    vitorias += 1
+                    resultado = "V"
+                elif meus_gols < gols_adv:
+                    derrotas += 1
+                    resultado = "D"
+                else:
+                    empates += 1
+                    resultado = "E"
+
+                historico.append((data, competicao, casa, gols_casa, gols_fora, fora, resultado))
+
+            pontos = vitorias * 3 + empates
+            aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
+            saldo = gols_marcados - gols_sofridos
+
+            ctk.CTkLabel(
+                frame_resultados,
+                text=f"Confronto Direto: {adversario.title()}",
+                font=("Arial", 22, "bold")
+            ).pack(anchor="w", padx=10, pady=(10, 8))
+
+            resumo = ctk.CTkFrame(frame_resultados, corner_radius=12)
+            resumo.pack(fill="x", padx=10, pady=8)
+
+            texto = (
+                f"Jogos: {jogos} | V: {vitorias} | E: {empates} | D: {derrotas}\n"
+                f"GM: {gols_marcados} | GS: {gols_sofridos} | SG: {saldo}\n"
+                f"Aproveitamento: {aproveitamento:.1f}%"
+            )
+
+            ctk.CTkLabel(
+                resumo,
+                text=texto,
+                justify="left",
+                font=("Arial", 15)
+            ).pack(anchor="w", padx=15, pady=12)
+
+            ctk.CTkLabel(
+                frame_resultados,
+                text="Histórico de confrontos",
+                font=("Arial", 18, "bold")
+            ).pack(anchor="w", padx=10, pady=(15, 8))
+
+            if not historico:
+                ctk.CTkLabel(
+                    frame_resultados,
+                    text="Nenhum confronto encontrado."
+                ).pack(pady=10)
+                return
+
+            for data, competicao, casa, gols_casa, gols_fora, fora, resultado in historico:
+                cor = "#28a745" if resultado == "V" else "#dc3545" if resultado == "D" else "#ffc107"
+
+                card_jogo = ctk.CTkFrame(frame_resultados, corner_radius=12)
+                card_jogo.pack(fill="x", padx=10, pady=5)
+
+                badge = ctk.CTkFrame(card_jogo, fg_color=cor, corner_radius=6, width=35, height=35)
+                badge.pack(side="left", padx=12, pady=10)
+                badge.pack_propagate(False)
+
+                ctk.CTkLabel(
+                    badge,
+                    text=resultado,
+                    text_color="white",
+                    font=("Arial", 14, "bold")
+                ).pack(expand=True)
+
+                texto_jogo = (
+                    f"{data} | {competicao}\n"
+                    f"{casa.title()} {gols_casa} x {gols_fora} {fora.title()}"
+                )
+
+                ctk.CTkLabel(
+                    card_jogo,
+                    text=texto_jogo,
+                    justify="left",
+                    font=("Arial", 14)
+                ).pack(side="left", padx=10, pady=10)
+            
+        ctk.CTkButton(
+            frame_busca,
+            text="Buscar",
+            command=buscar_adversarios,
+            width=120
+        ).pack(side="left")
+
+        entrada_busca.bind(
+            "<Return>",
+            lambda event: buscar_adversarios()
+        )
+        ctk.CTkButton(
+                frame_resultados,
+                text="Voltar para busca",
+                command=buscar_adversarios,
+                width=160
+            ).pack(pady=15)
+
+        
 
     ctk.CTkButton(
         abas,
@@ -938,6 +1278,12 @@ def tela_estatisticas():
     command=mostrar_por_temporada,
     width=180
 ).pack(side="left", padx=5)
+    ctk.CTkButton(
+        abas,
+        text="Confronto Direto",
+        command=mostrar_confronto_direto,
+        width=180
+    ).pack(side="left", padx=5)
     mostrar_geral()
 
 
@@ -2469,7 +2815,6 @@ ctk.CTkButton(menu, text="Carreiras", command=tela_carreiras).pack(fill="x", pad
 ctk.CTkButton(menu, text="Partidas", command=tela_partidas).pack(fill="x", padx=15, pady=6)
 ctk.CTkButton(menu, text="Calendário", command=tela_calendario).pack(fill="x", padx=15, pady=6)
 ctk.CTkButton(menu, text="Estatísticas", command=tela_estatisticas).pack(fill="x", padx=15, pady=6)
-ctk.CTkButton(menu,text="Competições",command=tela_competicoes).pack(fill="x", padx=15, pady=6)
 ctk.CTkButton(menu, text="Histórico", command=tela_historico).pack(fill="x", padx=15, pady=6)
 ctk.CTkButton(menu, text="Títulos", command=tela_titulos).pack(fill="x", padx=15, pady=6)
 ctk.CTkButton(menu, text="OCR / Captura", command=tela_ocr_captura).pack(fill="x", padx=15, pady=6)
