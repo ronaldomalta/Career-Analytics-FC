@@ -84,7 +84,7 @@ def atualizar_banco():
     adicionar_coluna("carreira_id", "INTEGER")
     adicionar_coluna("meu_time_na_partida", "TEXT")
     adicionar_coluna("tipo_time", "TEXT")
-
+    adicionar_coluna("temporada", "TEXT")
 
 if __name__ == "__main__":
     atualizar_banco()

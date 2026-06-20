@@ -340,7 +340,8 @@ def salvar_partida(partida):
         time_fora,
         gols_casa,
         gols_fora,
-        data_partida
+        data_partida,
+        temporada           
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
@@ -353,6 +354,7 @@ def salvar_partida(partida):
         partida["gols_casa"],
         partida["gols_fora"],
         partida["data"],
+        partida.get("ano", "")
     ))
 
     conexao.commit()

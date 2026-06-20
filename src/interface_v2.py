@@ -820,6 +820,97 @@ def tela_estatisticas():
                 justify="left",
                 font=("Arial", 15)
             ).pack(anchor="w", padx=15, pady=12)
+
+    def mostrar_por_temporada():
+        limpar_area()
+
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+        SELECT temporada, meu_time_na_partida, time_casa, time_fora, gols_casa, gols_fora
+        FROM partidas
+        WHERE carreira_id = ?
+        ORDER BY temporada ASC, id ASC
+        """, (carreira["id"],))
+
+        partidas = cursor.fetchall()
+        conexao.close()
+
+        estatisticas = {}
+
+        for temporada, meu_time, casa, fora, gols_casa, gols_fora in partidas:
+            if not temporada:
+                temporada = "Temporada não informada"
+
+            if not meu_time or meu_time not in [casa, fora]:
+                continue
+
+            if temporada not in estatisticas:
+                estatisticas[temporada] = {
+                    "jogos": 0,
+                    "vitorias": 0,
+                    "empates": 0,
+                    "derrotas": 0,
+                    "gols_marcados": 0,
+                    "gols_sofridos": 0
+                }
+
+            meus_gols, gols_adv = calcular_resultado_partida(
+                meu_time,
+                casa,
+                fora,
+                gols_casa,
+                gols_fora
+            )
+
+            estatisticas[temporada]["jogos"] += 1
+            estatisticas[temporada]["gols_marcados"] += meus_gols
+            estatisticas[temporada]["gols_sofridos"] += gols_adv
+
+            if meus_gols > gols_adv:
+                estatisticas[temporada]["vitorias"] += 1
+            elif meus_gols < gols_adv:
+                estatisticas[temporada]["derrotas"] += 1
+            else:
+                estatisticas[temporada]["empates"] += 1
+
+        frame_lista = ctk.CTkScrollableFrame(area_estatisticas, width=850, height=500)
+        frame_lista.pack(fill="both", expand=True, padx=25, pady=10)
+
+        if not estatisticas:
+            ctk.CTkLabel(
+                frame_lista,
+                text="Nenhuma temporada encontrada.",
+                font=("Arial", 15)
+            ).pack(pady=20)
+            return
+
+        for temporada, dados in estatisticas.items():
+            jogos = dados["jogos"]
+            pontos = dados["vitorias"] * 3 + dados["empates"]
+            aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
+            saldo = dados["gols_marcados"] - dados["gols_sofridos"]
+
+            texto = (
+                f"Temporada {temporada}\n"
+                f"Jogos: {jogos} | V: {dados['vitorias']} | E: {dados['empates']} | D: {dados['derrotas']}\n"
+                f"GM: {dados['gols_marcados']} | GS: {dados['gols_sofridos']} | SG: {saldo}\n"
+                f"Aproveitamento: {aproveitamento:.1f}%"
+            )
+
+            card_temporada = ctk.CTkFrame(frame_lista, corner_radius=12)
+            card_temporada.pack(fill="x", padx=10, pady=8)
+
+            ctk.CTkLabel(
+                card_temporada,
+                text=texto,
+                justify="left",
+                font=("Arial", 15)
+            ).pack(anchor="w", padx=15, pady=12)
+        
+
+
     ctk.CTkButton(
         abas,
         text="Geral",
@@ -840,6 +931,12 @@ def tela_estatisticas():
         command=mostrar_por_competicao,
         width=150
     ).pack(side="left", padx=5)
+    ctk.CTkButton(
+    abas,
+    text="Por Temporada",
+    command=mostrar_por_temporada,
+    width=180
+).pack(side="left", padx=5)
     mostrar_geral()
 
 
