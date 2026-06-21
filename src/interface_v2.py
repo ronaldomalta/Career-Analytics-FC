@@ -6,9 +6,10 @@ from datetime import datetime
 import shutil
 import csv
 import calendar
+import re
 
 from carreira_ativa import carregar_carreira_ativa
-from importar_partida import extrair_partida, salvar_partida
+from importar_partida import extrair_partida, extrair_pre_jogo, salvar_partida
 from carreira_ativa import carregar_carreira_ativa, salvar_carreira_ativa
 
 DB_PATH = "data/career_tracker.db"
@@ -273,6 +274,66 @@ def tela_dashboard():
         else:
             break
 
+    estatisticas_competicoes = {}
+
+    for partida in partidas:
+        meu_time, tipo_time, competicao, casa, fora, gols_casa, gols_fora, data = partida
+
+        if not meu_time or not casa or not fora:
+            continue
+
+        meu_time = meu_time.lower().strip()
+        casa = casa.lower().strip()
+        fora = fora.lower().strip()
+
+        if meu_time not in [casa, fora]:
+            continue
+
+        if competicao not in estatisticas_competicoes:
+            estatisticas_competicoes[competicao] = {
+                "jogos": 0,
+                "vitorias": 0,
+                "empates": 0,
+                "derrotas": 0
+            }
+
+        meus_gols, gols_adv = calcular_resultado_partida(
+            meu_time,
+            casa,
+            fora,
+            gols_casa,
+            gols_fora
+        )
+
+        estatisticas_competicoes[competicao]["jogos"] += 1
+
+        if meus_gols > gols_adv:
+            estatisticas_competicoes[competicao]["vitorias"] += 1
+        elif meus_gols < gols_adv:
+            estatisticas_competicoes[competicao]["derrotas"] += 1
+        else:
+            estatisticas_competicoes[competicao]["empates"] += 1
+
+    ranking_competicoes = []
+
+    for competicao, dados in estatisticas_competicoes.items():
+        jogos_comp = dados["jogos"]
+
+        if jogos_comp == 0:
+            continue
+
+        pontos = dados["vitorias"] * 3 + dados["empates"]
+        aproveitamento_comp = (pontos / (jogos_comp * 3)) * 100
+
+        ranking_competicoes.append((competicao, aproveitamento_comp, jogos_comp))
+
+    melhor_competicao = None
+    pior_competicao = None
+
+    if ranking_competicoes:
+        melhor_competicao = max(ranking_competicoes, key=lambda x: x[1])
+        pior_competicao = min(ranking_competicoes, key=lambda x: x[1])
+            
     frame_cards_1 = ctk.CTkFrame(conteudo, fg_color="transparent")
     frame_cards_1.pack(fill="x", padx=18, pady=(5, 0))
 
@@ -406,6 +467,24 @@ def tela_dashboard():
         text="Últimas Partidas",
         font=("Arial", 18, "bold")
     ).pack(pady=(10, 15))
+
+    if melhor_competicao:
+        nome, aproveitamento_comp, jogos_comp = melhor_competicao
+
+    ctk.CTkLabel(
+        frame_info,
+        text=f"📈 Melhor competição: {nome.title()} — {aproveitamento_comp:.1f}% em {jogos_comp} jogos",
+        font=("Arial", 15, "bold")
+    ).pack(pady=(5, 5))
+
+    if pior_competicao:
+        nome, aproveitamento_comp, jogos_comp = pior_competicao
+
+    ctk.CTkLabel(
+        frame_info,
+        text=f"📉 Pior competição: {nome.title()} — {aproveitamento_comp:.1f}% em {jogos_comp} jogos",
+        font=("Arial", 15, "bold")
+    ).pack(pady=(5, 10))
 
     if ultimas_partidas:
         for id_partida, casa, gols_casa, gols_fora, fora, competicao, data in ultimas_partidas:
@@ -763,7 +842,14 @@ def tela_estatisticas():
         for partida in partidas:
             meu_time, competicao, casa, fora, gols_casa, gols_fora = partida
 
-            if not meu_time or meu_time not in [casa, fora]:
+            if not meu_time or not casa or not fora:
+                continue
+
+            meu_time = meu_time.lower().strip()
+            casa = casa.lower().strip()
+            fora = fora.lower().strip()
+
+            if meu_time not in [casa, fora]:
                 continue
 
             if competicao not in estatisticas:
@@ -810,39 +896,38 @@ def tela_estatisticas():
             return
 
         for competicao, dados in estatisticas.items():
-
             jogos = dados["jogos"]
             pontos = dados["vitorias"] * 3 + dados["empates"]
             aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
             saldo = dados["gols_marcados"] - dados["gols_sofridos"]
 
             card_competicao = ctk.CTkFrame(
-            frame_lista,
-            corner_radius=12
-)
-        card_competicao.pack(fill="x", padx=10, pady=8)
+                frame_lista,
+                corner_radius=12
+            )
+            card_competicao.pack(fill="x", padx=10, pady=8)
 
-        ctk.CTkLabel(
-            card_competicao,
-            text=f"🏆 {competicao.title()}",
-            font=("Arial", 20, "bold")
-        ).pack(anchor="w", padx=15, pady=(12, 8))
+            ctk.CTkLabel(
+                card_competicao,
+                text=f"🏆 {competicao.title()}",
+                font=("Arial", 20, "bold")
+            ).pack(anchor="w", padx=15, pady=(12, 8))
 
-        linha_cards = ctk.CTkFrame(card_competicao, fg_color="transparent")
-        linha_cards.pack(fill="x", padx=10, pady=(0, 8))
+            linha_cards = ctk.CTkFrame(card_competicao, fg_color="transparent")
+            linha_cards.pack(fill="x", padx=10, pady=(0, 8))
 
-        mini_card(linha_cards, "Jogos", str(jogos))
-        mini_card(linha_cards, "Vitórias", str(dados["vitorias"]))
-        mini_card(linha_cards, "Empates", str(dados["empates"]))
-        mini_card(linha_cards, "Derrotas", str(dados["derrotas"]))
+            mini_card(linha_cards, "Jogos", str(jogos))
+            mini_card(linha_cards, "Vitórias", str(dados["vitorias"]))
+            mini_card(linha_cards, "Empates", str(dados["empates"]))
+            mini_card(linha_cards, "Derrotas", str(dados["derrotas"]))
 
-        linha_cards_2 = ctk.CTkFrame(card_competicao, fg_color="transparent")
-        linha_cards_2.pack(fill="x", padx=10, pady=(0, 8))
+            linha_cards_2 = ctk.CTkFrame(card_competicao, fg_color="transparent")
+            linha_cards_2.pack(fill="x", padx=10, pady=(0, 8))
 
-        mini_card(linha_cards_2, "GM", str(dados["gols_marcados"]))
-        mini_card(linha_cards_2, "GS", str(dados["gols_sofridos"]))
-        mini_card(linha_cards_2, "SG", str(saldo))
-        mini_card(linha_cards_2, "Aproveit.", f"{aproveitamento:.1f}%")
+            mini_card(linha_cards_2, "GM", str(dados["gols_marcados"]))
+            mini_card(linha_cards_2, "GS", str(dados["gols_sofridos"]))
+            mini_card(linha_cards_2, "SG", str(saldo))
+            mini_card(linha_cards_2, "Aproveit.", f"{aproveitamento:.1f}%")
 
     def mostrar_por_temporada():
         limpar_area()
@@ -960,7 +1045,125 @@ def tela_estatisticas():
             height=450
         )
         frame_resultados.pack(fill="both", expand=True, padx=25, pady=10)
+        def mostrar_rankings_confrontos():
+            limpar_resultados()
 
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+        SELECT meu_time_na_partida, time_casa, time_fora, gols_casa, gols_fora
+        FROM partidas
+        WHERE carreira_id = ?
+        """, (carreira["id"],))
+
+        partidas = cursor.fetchall()
+        conexao.close()
+
+        estatisticas = {}
+
+        for meu_time, casa, fora, gols_casa, gols_fora in partidas:
+            if not meu_time or not casa or not fora:
+                continue
+
+            meu_time_limpo = meu_time.lower().strip()
+            casa_limpo = casa.lower().strip()
+            fora_limpo = fora.lower().strip()
+
+            if meu_time_limpo == casa_limpo:
+                adversario = fora
+            elif meu_time_limpo == fora_limpo:
+                adversario = casa
+            else:
+                continue
+
+            if adversario not in estatisticas:
+                estatisticas[adversario] = {
+                    "jogos": 0,
+                    "vitorias": 0,
+                    "empates": 0,
+                    "derrotas": 0,
+                    "gm": 0,
+                    "gs": 0
+                }
+
+            meus_gols, gols_adv = calcular_resultado_partida(
+                meu_time_limpo,
+                casa_limpo,
+                fora_limpo,
+                gols_casa,
+                gols_fora
+            )
+
+            estatisticas[adversario]["jogos"] += 1
+            estatisticas[adversario]["gm"] += meus_gols
+            estatisticas[adversario]["gs"] += gols_adv
+
+            if meus_gols > gols_adv:
+                estatisticas[adversario]["vitorias"] += 1
+            elif meus_gols < gols_adv:
+                estatisticas[adversario]["derrotas"] += 1
+            else:
+                estatisticas[adversario]["empates"] += 1
+
+        ranking = []
+
+        for adversario, dados in estatisticas.items():
+            jogos = dados["jogos"]
+
+            if jogos < 2:
+                continue
+
+            pontos = dados["vitorias"] * 3 + dados["empates"]
+            aproveitamento = (pontos / (jogos * 3)) * 100
+            saldo = dados["gm"] - dados["gs"]
+
+            ranking.append((adversario, aproveitamento, jogos, dados, saldo))
+
+        melhores = sorted(ranking, key=lambda x: x[1], reverse=True)[:10]
+        piores = sorted(ranking, key=lambda x: x[1])[:10]
+
+        def criar_secao(titulo, lista, cor):
+            ctk.CTkLabel(
+                frame_resultados,
+                text=titulo,
+                font=("Arial", 20, "bold")
+            ).pack(anchor="w", padx=10, pady=(15, 8))
+
+            if not lista:
+                ctk.CTkLabel(
+                    frame_resultados,
+                    text="Ainda não há confrontos suficientes."
+                ).pack(anchor="w", padx=10, pady=5)
+                return
+
+            for pos, (adversario, aproveitamento, jogos, dados, saldo) in enumerate(lista, start=1):
+                card_rank = ctk.CTkFrame(frame_resultados, corner_radius=12)
+                card_rank.pack(fill="x", padx=10, pady=5)
+
+                texto = (
+                    f"{pos}. {adversario.title()}\n"
+                    f"Aproveitamento: {aproveitamento:.1f}% | Jogos: {jogos}\n"
+                    f"V: {dados['vitorias']} | E: {dados['empates']} | D: {dados['derrotas']} | "
+                    f"GM: {dados['gm']} | GS: {dados['gs']} | SG: {saldo}"
+                )
+
+                ctk.CTkLabel(
+                    card_rank,
+                    text=texto,
+                    justify="left",
+                    font=("Arial", 14)
+                ).pack(side="left", padx=15, pady=10)
+
+                ctk.CTkButton(
+                    card_rank,
+                    text="Ver",
+                    width=80,
+                    command=lambda adv=adversario: mostrar_estatisticas_adversario(adv)
+                ).pack(side="right", padx=15, pady=10)
+
+        criar_secao("🟢 Top 10 Melhores Confrontos", melhores, "#28a745")
+        criar_secao("🔴 Top 10 Piores Confrontos", piores, "#dc3545")
         def limpar_resultados():
             for widget in frame_resultados.winfo_children():
                 widget.destroy()
@@ -1239,6 +1442,13 @@ def tela_estatisticas():
             width=120
         ).pack(side="left")
 
+        ctk.CTkButton(
+            frame_busca,
+            text="Rankings",
+            command=mostrar_rankings_confrontos,
+            width=120
+        ).pack(side="left", padx=5)
+
         entrada_busca.bind(
             "<Return>",
             lambda event: buscar_adversarios()
@@ -1249,8 +1459,329 @@ def tela_estatisticas():
                 command=buscar_adversarios,
                 width=160
             ).pack(pady=15)
-
         
+    def mostrar_hall_da_fama():
+        limpar_area()
+
+        conexao = conectar()
+        cursor = conexao.cursor()
+
+        cursor.execute("""
+        SELECT meu_time_na_partida, competicao, time_casa, time_fora, gols_casa, gols_fora, data_partida
+        FROM partidas
+        WHERE carreira_id = ?
+        ORDER BY id ASC
+        """, (carreira["id"],))
+
+        partidas = cursor.fetchall()
+        conexao.close()
+
+        partidas_validas = []
+
+        for partida in partidas:
+            meu_time, competicao, casa, fora, gols_casa, gols_fora, data = partida
+
+            if not meu_time or not casa or not fora:
+                continue
+
+            meu_time_limpo = meu_time.lower().strip()
+            casa_limpo = casa.lower().strip()
+            fora_limpo = fora.lower().strip()
+
+            if meu_time_limpo not in [casa_limpo, fora_limpo]:
+                continue
+
+            meus_gols, gols_adv = calcular_resultado_partida(
+                meu_time_limpo,
+                casa_limpo,
+                fora_limpo,
+                gols_casa,
+                gols_fora
+            )
+
+            if meu_time_limpo == casa_limpo:
+                adversario = fora
+            else:
+                adversario = casa
+
+            partidas_validas.append({
+                "meu_time": meu_time,
+                "competicao": competicao,
+                "casa": casa,
+                "fora": fora,
+                "gols_casa": gols_casa,
+                "gols_fora": gols_fora,
+                "data": data,
+                "meus_gols": meus_gols,
+                "gols_adv": gols_adv,
+                "saldo": meus_gols - gols_adv,
+                "adversario": adversario
+            })
+
+        frame = ctk.CTkScrollableFrame(
+            area_estatisticas,
+            width=850,
+            height=520
+        )
+        frame.pack(fill="both", expand=True, padx=25, pady=10)
+
+        ctk.CTkLabel(
+            frame,
+            text="🏆 Hall da Fama da Carreira",
+            font=("Arial", 24, "bold")
+        ).pack(anchor="w", padx=10, pady=(10, 15))
+
+        if not partidas_validas:
+            ctk.CTkLabel(
+                frame,
+                text="Nenhuma partida válida encontrada."
+            ).pack(pady=20)
+            return
+
+        maior_vitoria = None
+        pior_derrota = None
+
+        for partida in partidas_validas:
+            if partida["saldo"] > 0:
+                if maior_vitoria is None or partida["saldo"] > maior_vitoria["saldo"]:
+                    maior_vitoria = partida
+
+            if partida["saldo"] < 0:
+                if pior_derrota is None or partida["saldo"] < pior_derrota["saldo"]:
+                    pior_derrota = partida
+
+        maior_seq_vitorias = 0
+        maior_seq_invicta = 0
+        seq_vitorias_atual = 0
+        seq_invicta_atual = 0
+
+        for partida in partidas_validas:
+            if partida["meus_gols"] > partida["gols_adv"]:
+                seq_vitorias_atual += 1
+                seq_invicta_atual += 1
+            elif partida["meus_gols"] == partida["gols_adv"]:
+                seq_vitorias_atual = 0
+                seq_invicta_atual += 1
+            else:
+                seq_vitorias_atual = 0
+                seq_invicta_atual = 0
+
+            maior_seq_vitorias = max(maior_seq_vitorias, seq_vitorias_atual)
+            maior_seq_invicta = max(maior_seq_invicta, seq_invicta_atual)
+
+        confrontos = {}
+
+        for partida in partidas_validas:
+            adversario = partida["adversario"]
+
+            if adversario not in confrontos:
+                confrontos[adversario] = {
+                    "jogos": 0,
+                    "vitorias": 0,
+                    "empates": 0,
+                    "derrotas": 0,
+                    "gm": 0,
+                    "gs": 0
+                }
+
+            confrontos[adversario]["jogos"] += 1
+            confrontos[adversario]["gm"] += partida["meus_gols"]
+            confrontos[adversario]["gs"] += partida["gols_adv"]
+
+            if partida["meus_gols"] > partida["gols_adv"]:
+                confrontos[adversario]["vitorias"] += 1
+            elif partida["meus_gols"] < partida["gols_adv"]:
+                confrontos[adversario]["derrotas"] += 1
+            else:
+                confrontos[adversario]["empates"] += 1
+
+        time_mais_enfrentado = None
+        melhor_confronto = None
+        pior_confronto = None
+
+        ranking_confrontos = []
+
+        for adversario, dados in confrontos.items():
+            jogos = dados["jogos"]
+            pontos = dados["vitorias"] * 3 + dados["empates"]
+            aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
+            saldo = dados["gm"] - dados["gs"]
+
+            ranking_confrontos.append({
+                "adversario": adversario,
+                "jogos": jogos,
+                "aproveitamento": aproveitamento,
+                "saldo": saldo,
+                "dados": dados
+            })
+
+        if ranking_confrontos:
+            time_mais_enfrentado = max(
+                ranking_confrontos,
+                key=lambda item: item["jogos"]
+            )
+
+            melhor_confronto = max(
+                ranking_confrontos,
+                key=lambda item: (item["aproveitamento"], item["saldo"])
+            )
+
+            pior_confronto = min(
+                ranking_confrontos,
+                key=lambda item: (item["aproveitamento"], item["saldo"])
+            )
+
+        competicoes = {}
+
+        for partida in partidas_validas:
+            competicao = partida["competicao"]
+
+            if competicao not in competicoes:
+                competicoes[competicao] = {
+                    "jogos": 0,
+                    "vitorias": 0,
+                    "empates": 0,
+                    "derrotas": 0,
+                    "gm": 0,
+                    "gs": 0
+                }
+
+            competicoes[competicao]["jogos"] += 1
+            competicoes[competicao]["gm"] += partida["meus_gols"]
+            competicoes[competicao]["gs"] += partida["gols_adv"]
+
+            if partida["meus_gols"] > partida["gols_adv"]:
+                competicoes[competicao]["vitorias"] += 1
+            elif partida["meus_gols"] < partida["gols_adv"]:
+                competicoes[competicao]["derrotas"] += 1
+            else:
+                competicoes[competicao]["empates"] += 1
+
+        ranking_competicoes = []
+
+        for competicao, dados in competicoes.items():
+            jogos = dados["jogos"]
+            pontos = dados["vitorias"] * 3 + dados["empates"]
+            aproveitamento = (pontos / (jogos * 3)) * 100 if jogos > 0 else 0
+            saldo = dados["gm"] - dados["gs"]
+
+            ranking_competicoes.append({
+                "competicao": competicao,
+                "jogos": jogos,
+                "aproveitamento": aproveitamento,
+                "saldo": saldo,
+                "dados": dados
+            })
+
+        melhor_competicao = None
+        pior_competicao = None
+
+        if ranking_competicoes:
+            melhor_competicao = max(
+                ranking_competicoes,
+                key=lambda item: (item["aproveitamento"], item["saldo"])
+            )
+
+            pior_competicao = min(
+                ranking_competicoes,
+                key=lambda item: (item["aproveitamento"], item["saldo"])
+            )
+
+        def card_recorde(titulo, valor, detalhe=""):
+            card_recorde_frame = ctk.CTkFrame(frame, corner_radius=12)
+            card_recorde_frame.pack(fill="x", padx=10, pady=7)
+
+            ctk.CTkLabel(
+                card_recorde_frame,
+                text=titulo,
+                font=("Arial", 17, "bold")
+            ).pack(anchor="w", padx=15, pady=(10, 3))
+
+            ctk.CTkLabel(
+                card_recorde_frame,
+                text=valor,
+                font=("Arial", 15)
+            ).pack(anchor="w", padx=15, pady=2)
+
+            if detalhe:
+                ctk.CTkLabel(
+                    card_recorde_frame,
+                    text=detalhe,
+                    font=("Arial", 13)
+                ).pack(anchor="w", padx=15, pady=(0, 10))
+            else:
+                ctk.CTkLabel(
+                    card_recorde_frame,
+                    text="",
+                    font=("Arial", 1)
+                ).pack(pady=(0, 8))
+
+        if maior_vitoria:
+            card_recorde(
+                "⚽ Maior vitória",
+                f"{maior_vitoria['casa'].title()} {maior_vitoria['gols_casa']} x {maior_vitoria['gols_fora']} {maior_vitoria['fora'].title()}",
+                f"{maior_vitoria['competicao']} | {maior_vitoria['data']}"
+            )
+        else:
+            card_recorde("⚽ Maior vitória", "Nenhuma vitória registrada.")
+
+        if pior_derrota:
+            card_recorde(
+                "💥 Pior derrota",
+                f"{pior_derrota['casa'].title()} {pior_derrota['gols_casa']} x {pior_derrota['gols_fora']} {pior_derrota['fora'].title()}",
+                f"{pior_derrota['competicao']} | {pior_derrota['data']}"
+            )
+        else:
+            card_recorde("💥 Pior derrota", "Nenhuma derrota registrada.")
+
+        card_recorde(
+            "🔥 Maior sequência de vitórias",
+            f"{maior_seq_vitorias} vitória(s) seguida(s)"
+        )
+
+        card_recorde(
+            "🛡️ Maior sequência invicta",
+            f"{maior_seq_invicta} jogo(s) sem perder"
+        )
+
+        if time_mais_enfrentado:
+            card_recorde(
+                "🤝 Time mais enfrentado",
+                f"{time_mais_enfrentado['adversario'].title()}",
+                f"{time_mais_enfrentado['jogos']} jogo(s)"
+            )
+
+        if melhor_confronto:
+            card_recorde(
+                "📈 Melhor confronto direto",
+                f"{melhor_confronto['adversario'].title()}",
+                f"Aproveitamento: {melhor_confronto['aproveitamento']:.1f}% | Jogos: {melhor_confronto['jogos']}"
+            )
+
+        if pior_confronto:
+            card_recorde(
+                "📉 Pior confronto direto",
+                f"{pior_confronto['adversario'].title()}",
+                f"Aproveitamento: {pior_confronto['aproveitamento']:.1f}% | Jogos: {pior_confronto['jogos']}"
+            )
+
+        if melhor_competicao:
+            card_recorde(
+                "🏆 Melhor competição",
+                f"{melhor_competicao['competicao'].title()}",
+                f"Aproveitamento: {melhor_competicao['aproveitamento']:.1f}% | Jogos: {melhor_competicao['jogos']}"
+            )
+
+        if pior_competicao:
+            card_recorde(
+                "🏚️ Pior competição",
+                f"{pior_competicao['competicao'].title()}",
+                f"Aproveitamento: {pior_competicao['aproveitamento']:.1f}% | Jogos: {pior_competicao['jogos']}"
+        )
+            
+
+    
+      
 
     ctk.CTkButton(
         abas,
@@ -1283,6 +1814,13 @@ def tela_estatisticas():
         text="Confronto Direto",
         command=mostrar_confronto_direto,
         width=180
+    ).pack(side="left", padx=5)
+
+    ctk.CTkButton(
+        abas,
+        text="Hall da Fama",
+        command=mostrar_hall_da_fama,
+        width=150
     ).pack(side="left", padx=5)
     mostrar_geral()
 
@@ -1803,7 +2341,7 @@ def tela_ocr_captura():
 
     ctk.CTkLabel(
         conteudo,
-        text="Capture o pré-jogo, depois o pós-jogo, gere a prévia e confirme o salvamento.",
+        text="Capture o pré-jogo, depois o pós-jogo, gere a prévia, corrija se necessário e confirme.",
         font=("Arial", 15)
     ).pack(anchor="w", padx=25, pady=(0, 15))
 
@@ -1817,18 +2355,51 @@ def tela_ocr_captura():
     )
     status.pack(pady=10)
 
-    entrada_ano = ctk.CTkEntry(
-        frame_acoes,
-        placeholder_text="Ano da partida ex: 2026",
-        width=220
-    )
-    entrada_ano.pack(pady=8)
-
     botoes = ctk.CTkFrame(frame_acoes, fg_color="transparent")
     botoes.pack(pady=10)
 
-    previa = ctk.CTkLabel(conteudo, text="", font=("Arial", 16))
-    previa.pack(pady=15)
+    frame_previa = ctk.CTkFrame(conteudo, corner_radius=12)
+    frame_previa.pack(fill="x", padx=25, pady=10)
+
+    ctk.CTkLabel(
+        frame_previa,
+        text="Prévia editável da partida",
+        font=("Arial", 18, "bold")
+    ).pack(anchor="w", padx=15, pady=(12, 8))
+
+    linha_1 = ctk.CTkFrame(frame_previa, fg_color="transparent")
+    linha_1.pack(fill="x", padx=15, pady=5)
+
+    entrada_competicao = ctk.CTkEntry(linha_1, placeholder_text="Competição", width=220)
+    entrada_competicao.pack(side="left", padx=5)
+
+    entrada_fase = ctk.CTkEntry(linha_1, placeholder_text="Fase/Rodada", width=220)
+    entrada_fase.pack(side="left", padx=5)
+
+    entrada_data = ctk.CTkEntry(linha_1, placeholder_text="Data detectada", width=220)
+    entrada_data.pack(side="left", padx=5)
+
+    entrada_ano = ctk.CTkEntry(linha_1, placeholder_text="Ano ex: 2026", width=120)
+    entrada_ano.pack(side="left", padx=5)
+
+    linha_2 = ctk.CTkFrame(frame_previa, fg_color="transparent")
+    linha_2.pack(fill="x", padx=15, pady=5)
+
+    entrada_time_casa = ctk.CTkEntry(linha_2, placeholder_text="Time casa", width=220)
+    entrada_time_casa.pack(side="left", padx=5)
+
+    entrada_gols_casa = ctk.CTkEntry(linha_2, placeholder_text="Gols casa", width=100)
+    entrada_gols_casa.pack(side="left", padx=5)
+
+    entrada_gols_fora = ctk.CTkEntry(linha_2, placeholder_text="Gols fora", width=100)
+    entrada_gols_fora.pack(side="left", padx=5)
+
+    entrada_time_fora = ctk.CTkEntry(linha_2, placeholder_text="Time fora", width=220)
+    entrada_time_fora.pack(side="left", padx=5)
+
+    def preencher_campo(campo, valor):
+        campo.delete(0, "end")
+        campo.insert(0, str(valor))
 
     def preparar_pasta():
         os.makedirs(PASTA_TEMP, exist_ok=True)
@@ -1854,32 +2425,59 @@ def tela_ocr_captura():
             status.configure(text="Capture o pós-jogo primeiro.")
             return
 
-        partida = extrair_partida(PRE_JOGO, POS_JOGO)
-
-        if partida is None:
-            status.configure(text="Erro: não foi possível extrair a partida.")
+    def gerar_previa():
+        if not os.path.exists(PRE_JOGO):
+            status.configure(text="Capture o pré-jogo primeiro.")
             return
 
-        partida_extraida.clear()
-        partida_extraida.update(partida)
+        if not os.path.exists(POS_JOGO):
+            status.configure(text="Capture o pós-jogo primeiro.")
+            return
 
-        texto = (
-            f"Competição: {partida['competicao']}\n"
-            f"Fase: {partida['fase']}\n"
-            f"Data: {partida['data']}\n\n"
-            f"{partida['time_casa']} {partida['gols_casa']} x "
-            f"{partida['gols_fora']} {partida['time_fora']}"
-        )
+    partida = extrair_partida(PRE_JOGO, POS_JOGO)
 
-        previa.configure(text=texto)
-        status.configure(text="Prévia gerada. Confira antes de salvar.")
+    if partida is None:
+        try:
+            dados_pre = extrair_pre_jogo(PRE_JOGO)
+
+            partida = {
+                "competicao": dados_pre.get("competicao", ""),
+                "fase": dados_pre.get("fase", ""),
+                "data": dados_pre.get("data", ""),
+                "time_casa": dados_pre.get("time_casa", ""),
+                "time_fora": dados_pre.get("time_fora", ""),
+                "gols_casa": "",
+                "gols_fora": ""
+            }
+
+            status.configure(text="OCR parcial. Corrija os campos manualmente.")
+
+        except Exception as erro:
+            status.configure(text=f"Erro no OCR parcial: {erro}")
+            return
+
+    partida_extraida.clear()
+    partida_extraida.update(partida)
+
+    preencher_campo(entrada_competicao, partida.get("competicao", ""))
+    preencher_campo(entrada_fase, partida.get("fase", ""))
+    preencher_campo(entrada_data, partida.get("data", ""))
+    preencher_campo(entrada_time_casa, partida.get("time_casa", ""))
+    preencher_campo(entrada_gols_casa, partida.get("gols_casa", ""))
+    preencher_campo(entrada_gols_fora, partida.get("gols_fora", ""))
+    preencher_campo(entrada_time_fora, partida.get("time_fora", ""))
+
+    status.configure(text="Prévia gerada. Corrija os campos se necessário antes de salvar.")
 
     def confirmar_salvamento():
-        if not partida_extraida:
-            status.configure(text="Gere a prévia antes de salvar.")
-            return
-
         ano = entrada_ano.get().strip()
+        competicao = entrada_competicao.get().strip()
+        fase = entrada_fase.get().strip()
+        data = entrada_data.get().strip()
+        time_casa = entrada_time_casa.get().strip()
+        time_fora = entrada_time_fora.get().strip()
+        gols_casa = entrada_gols_casa.get().strip()
+        gols_fora = entrada_gols_fora.get().strip()
 
         if not ano:
             status.configure(text="Informe o ano da partida antes de salvar.")
@@ -1889,9 +2487,24 @@ def tela_ocr_captura():
             status.configure(text="Ano inválido. Use o formato 2026.")
             return
 
-        partida_para_salvar = partida_extraida.copy()
-        partida_para_salvar["ano"] = ano
-        partida_para_salvar["data"] = f"{partida_para_salvar['data']} / {ano}"
+        if not competicao or not data or not time_casa or not time_fora:
+            status.configure(text="Preencha competição, data, time casa e time fora.")
+            return
+
+        if not gols_casa.isdigit() or not gols_fora.isdigit():
+            status.configure(text="Gols precisam ser números.")
+            return
+
+        partida_para_salvar = {
+            "competicao": competicao,
+            "fase": fase,
+            "data": f"{data} / {ano}",
+            "ano": ano,
+            "time_casa": time_casa,
+            "time_fora": time_fora,
+            "gols_casa": int(gols_casa),
+            "gols_fora": int(gols_fora),
+        }
 
         sucesso, mensagem = salvar_partida(partida_para_salvar)
         status.configure(text=mensagem)
@@ -1932,7 +2545,7 @@ def tela_ocr_captura():
         text=f"Arquivos temporários:\n{PRE_JOGO}\n{POS_JOGO}",
         justify="left"
     ).pack(anchor="w", padx=15, pady=15)
-
+    
 def tela_carreiras():
     limpar_conteudo()
 
@@ -2395,6 +3008,7 @@ def tela_calendario():
     }
 
     anos = ["2026", "2027", "2028", "2029", "2030"]
+
     ano_var = ctk.StringVar(value="2026")
     mes_var = ctk.StringVar(value="Janeiro")
 
@@ -2402,18 +3016,19 @@ def tela_calendario():
     filtros.pack(anchor="w", padx=25, pady=10)
 
     ctk.CTkOptionMenu(
-        filtros,
-        values=anos,
-        variable=ano_var,
-        width=120
-    ).pack(side="left", padx=5)
-
+    filtros,
+    values=anos,
+    variable=ano_var,
+    width=120,
+    command=lambda valor: carregar_partidas()
+).pack(side="left", padx=5)
     ctk.CTkOptionMenu(
-        filtros,
-        values=list(meses.keys()),
-        variable=mes_var,
-        width=160
-    ).pack(side="left", padx=5)
+    filtros,
+    values=list(meses.keys()),
+    variable=mes_var,
+    width=160,
+    command=lambda valor: carregar_partidas()
+).pack(side="left", padx=5)
 
     area_calendario = ctk.CTkFrame(conteudo, fg_color="transparent")
     area_calendario.pack(fill="both", expand=True, padx=25, pady=10)
@@ -2428,25 +3043,59 @@ def tela_calendario():
 
         texto = data_texto.upper()
 
+        mapa_meses = {
+            "JAN": "Janeiro",
+            "JANEIRO": "Janeiro",
+            "FEV": "Fevereiro",
+            "FEVEREIRO": "Fevereiro",
+            "MAR": "Março",
+            "MARCO": "Março",
+            "MARÇO": "Março",
+            "ABR": "Abril",
+            "ABRIL": "Abril",
+            "MAI": "Maio",
+            "MAIO": "Maio",
+            "JUN": "Junho",
+            "JUNHO": "Junho",
+            "JUL": "Julho",
+            "JULHO": "Julho",
+            "AGO": "Agosto",
+            "AGOSTO": "Agosto",
+            "SET": "Setembro",
+            "SETEMBRO": "Setembro",
+            "OUT": "Outubro",
+            "OUTUBRO": "Outubro",
+            "NOV": "Novembro",
+            "NOVEMBRO": "Novembro",
+            "DEZ": "Dezembro",
+            "DEZEMBRO": "Dezembro",
+        }
+
         ano_encontrado = None
-        for ano in anos:
-            if ano in texto:
-                ano_encontrado = ano
-                break
+        resultado_ano = re.search(r"\b(20\d{2})\b", texto)
+        if resultado_ano:
+            ano_encontrado = resultado_ano.group(1)
 
         dia_encontrado = None
-        partes = texto.replace(",", " ").replace("/", " ").split()
+
+        partes = (
+            texto.replace(",", " ")
+                 .replace("/", " ")
+                 .split()
+)
 
         for parte in partes:
-            if parte.isdigit():
-                numero = int(parte)
+            numero_limpo = re.sub(r"\D", "", parte)
+
+            if numero_limpo:
+                numero = int(numero_limpo)
+
                 if 1 <= numero <= 31:
                     dia_encontrado = numero
                     break
-
         mes_encontrado = None
-        for nome_mes, sigla in meses.items():
-            if sigla in texto:
+        for chave, nome_mes in mapa_meses.items():
+            if chave in texto:
                 mes_encontrado = nome_mes
                 break
 
@@ -2463,7 +3112,7 @@ def tela_calendario():
         cursor = conexao.cursor()
 
         cursor.execute("""
-        SELECT meu_time_na_partida, competicao, time_casa, gols_casa, gols_fora, time_fora, data_partida
+        SELECT meu_time_na_partida, competicao, time_casa, gols_casa, gols_fora, time_fora, data_partida, temporada
         FROM partidas
         WHERE carreira_id = ?
         ORDER BY id ASC
@@ -2474,8 +3123,13 @@ def tela_calendario():
 
         partidas_por_dia = {}
 
-        for meu_time, competicao, casa, gols_casa, gols_fora, fora, data in partidas:
+        for meu_time, competicao, casa, gols_casa, gols_fora, fora, data, temporada in partidas:
+            print("DATA:", data)
             dia, mes_detectado, ano_detectado = extrair_dia_mes_ano(data)
+            print("RESULTADO:", dia, mes_detectado, ano_detectado)
+            if ano_detectado is None and temporada:
+                ano_detectado = str(temporada)
+                print(data, "->", dia, mes_detectado, ano_detectado)
 
             if dia is None or mes_detectado is None or ano_detectado is None:
                 continue
@@ -2483,10 +3137,19 @@ def tela_calendario():
             if ano_detectado != ano or mes_detectado != mes:
                 continue
 
+            if not meu_time:
+                continue
+
+            meu_time_limpo = meu_time.lower().strip()
+            casa_limpo = casa.lower().strip()
+            fora_limpo = fora.lower().strip()
+
+            mando = "Casa" if meu_time_limpo == casa_limpo else "Fora"
+
             meus_gols, gols_adv = calcular_resultado_partida(
-                meu_time,
-                casa,
-                fora,
+                meu_time_limpo,
+                casa_limpo,
+                fora_limpo,
                 gols_casa,
                 gols_fora
             )
@@ -2503,8 +3166,7 @@ def tela_calendario():
 
             partidas_por_dia[dia] = {
                 "competicao": competicao,
-                "casa": casa,
-                "fora": fora,
+                "mando": mando,
                 "placar": f"{gols_casa}x{gols_fora}",
                 "resultado": resultado,
                 "cor": cor
@@ -2539,11 +3201,19 @@ def tela_calendario():
             linha.pack(fill="x", pady=3)
 
             for dia in semana:
+                if dia in partidas_por_dia:
+                    jogo = partidas_por_dia[dia]
+                    cor_card = jogo["cor"]
+                else:
+                    jogo = None
+                    cor_card = None
+
                 card_dia = ctk.CTkFrame(
                     linha,
                     width=110,
                     height=95,
-                    corner_radius=8
+                    corner_radius=8,
+                    fg_color=cor_card if cor_card else None
                 )
                 card_dia.pack(side="left", padx=3)
                 card_dia.pack_propagate(False)
@@ -2552,45 +3222,40 @@ def tela_calendario():
                     ctk.CTkLabel(card_dia, text="").pack()
                     continue
 
+                text_color = "white" if jogo else None
+
                 ctk.CTkLabel(
                     card_dia,
                     text=str(dia),
-                    font=("Arial", 13, "bold")
+                    font=("Arial", 13, "bold"),
+                    text_color=text_color
                 ).pack(anchor="nw", padx=6, pady=(5, 0))
 
-                if dia in partidas_por_dia:
-                    jogo = partidas_por_dia[dia]
-
+                if jogo:
                     ctk.CTkLabel(
                         card_dia,
-                        text=f"{jogo['casa'].title()}",
-                        font=("Arial", 10)
+                        text=jogo["mando"],
+                        font=("Arial", 12, "bold"),
+                        text_color="white"
                     ).pack(pady=(3, 0))
 
                     ctk.CTkLabel(
                         card_dia,
                         text=jogo["placar"],
-                        font=("Arial", 13, "bold")
+                        font=("Arial", 14, "bold"),
+                        text_color="white"
                     ).pack()
-
-                    badge = ctk.CTkFrame(
-                        card_dia,
-                        fg_color=jogo["cor"],
-                        corner_radius=6
-                    )
-                    badge.pack(pady=3)
 
                     ctk.CTkLabel(
-                        badge,
+                        card_dia,
                         text=jogo["resultado"],
-                        text_color="white",
-                        font=("Arial", 11, "bold"),
-                        width=28
-                    ).pack()
+                        font=("Arial", 16, "bold"),
+                        text_color="white"
+                    ).pack(pady=(0, 3))
 
         ctk.CTkLabel(
             area_calendario,
-            text="Legenda: V = vitória | E = empate | D = derrota",
+            text="Legenda: Verde = vitória | Amarelo = empate | Vermelho = derrota",
             font=("Arial", 13)
         ).pack(pady=10)
 
@@ -2602,7 +3267,6 @@ def tela_calendario():
     ).pack(side="left", padx=5)
 
     carregar_partidas()
-
 
 def tela_configuracoes():
     limpar_conteudo()

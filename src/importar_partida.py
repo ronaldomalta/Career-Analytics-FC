@@ -7,7 +7,7 @@ from carreira_ativa import carregar_carreira_ativa
 
 DB_PATH = "data/career_tracker.db"
 
-DEBUG_OCR = False
+DEBUG_OCR = True
 
 pytesseract.pytesseract.tesseract_cmd = (
     r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -172,8 +172,16 @@ def extrair_pre_jogo(caminho_imagem):
         if "," in linha:
             continue
 
-        if len(linha.strip()) >= 3:
-            linhas_times.append(linha.strip())
+        linha_time = linha.strip()
+
+        # Remove posição da tabela no fim do nome: "SPORT 1º", "DECISÃO-PE 2º"
+        linha_time = re.sub(r"\s+\d+[ºª]$", "", linha_time).strip()
+
+        # Remove números soltos que o OCR possa jogar no final
+        linha_time = re.sub(r"\s+\d+$", "", linha_time).strip()
+
+        if len(linha_time) >= 3:
+            linhas_times.append(linha_time)
 
     time_casa = ""
     time_fora = ""
@@ -237,10 +245,15 @@ def extrair_partida(pre_jogo, pos_jogo):
     dados_pre = extrair_pre_jogo(pre_jogo)
     dados_pos = extrair_pos_jogo(pos_jogo)
 
+    print("DEBUG PRÉ:", dados_pre)
+    print("DEBUG PÓS:", dados_pos)
+
     if dados_pos is None:
+        print("ERRO: não encontrou placar no pós-jogo.")
         return None
 
     if not dados_pre["time_casa"] or not dados_pre["time_fora"]:
+        print("ERRO: não encontrou os times no pré-jogo.")
         return None
 
     return {
@@ -332,18 +345,18 @@ def salvar_partida(partida):
 
     cursor.execute("""
     INSERT INTO partidas (
-        carreira_id,
-        meu_time_na_partida,
-        tipo_time,
-        competicao,
-        time_casa,
-        time_fora,
-        gols_casa,
-        gols_fora,
-        data_partida,
-        temporada           
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    carreira_id,
+    meu_time_na_partida,
+    tipo_time,
+    competicao,
+    time_casa,
+    time_fora,
+    gols_casa,
+    gols_fora,
+    data_partida,
+    temporada
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         carreira_id,
         meu_time_na_partida,
