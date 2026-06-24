@@ -2331,6 +2331,8 @@ def tela_ocr_captura():
     PRE_JOGO = os.path.join(PASTA_TEMP, "pre_jogo.png")
     POS_JOGO = os.path.join(PASTA_TEMP, "pos_jogo.png")
 
+    os.makedirs(PASTA_TEMP, exist_ok=True)
+
     partida_extraida = {}
 
     ctk.CTkLabel(
@@ -2406,15 +2408,33 @@ def tela_ocr_captura():
 
     def capturar_pre():
         preparar_pasta()
-        screenshot = pyautogui.screenshot()
-        screenshot.save(PRE_JOGO)
-        status.configure(text="Pré-jogo capturado com sucesso.")
+        status.configure(text="Capturando pré-jogo em 3 segundos. Abra a tela do FIFA...")
+
+        def finalizar_pre():
+            if os.path.exists(PRE_JOGO):
+                os.remove(PRE_JOGO)
+
+            screenshot = pyautogui.screenshot()
+            screenshot.save(PRE_JOGO)
+
+            status.configure(text="Pré-jogo capturado com sucesso.")
+
+        app.after(3000, finalizar_pre)
 
     def capturar_pos():
         preparar_pasta()
-        screenshot = pyautogui.screenshot()
-        screenshot.save(POS_JOGO)
-        status.configure(text="Pós-jogo capturado com sucesso.")
+        status.configure(text="Capturando pós-jogo em 3 segundos. Abra a tela do FIFA...")
+
+        def finalizar_pos():
+            if os.path.exists(POS_JOGO):
+                os.remove(POS_JOGO)
+
+            screenshot = pyautogui.screenshot()
+            screenshot.save(POS_JOGO)
+
+            status.configure(text="Pós-jogo capturado com sucesso.")
+
+        app.after(3000, finalizar_pos)
 
     def gerar_previa():
         if not os.path.exists(PRE_JOGO):
@@ -2425,49 +2445,40 @@ def tela_ocr_captura():
             status.configure(text="Capture o pós-jogo primeiro.")
             return
 
-    def gerar_previa():
-        if not os.path.exists(PRE_JOGO):
-            status.configure(text="Capture o pré-jogo primeiro.")
-            return
+        partida = extrair_partida(PRE_JOGO, POS_JOGO)
 
-        if not os.path.exists(POS_JOGO):
-            status.configure(text="Capture o pós-jogo primeiro.")
-            return
+        if partida is None:
+            try:
+                dados_pre = extrair_pre_jogo(PRE_JOGO)
 
-    partida = extrair_partida(PRE_JOGO, POS_JOGO)
+                partida = {
+                    "competicao": dados_pre.get("competicao", ""),
+                    "fase": dados_pre.get("fase", ""),
+                    "data": dados_pre.get("data", ""),
+                    "time_casa": dados_pre.get("time_casa", ""),
+                    "time_fora": dados_pre.get("time_fora", ""),
+                    "gols_casa": "",
+                    "gols_fora": ""
+                }
 
-    if partida is None:
-        try:
-            dados_pre = extrair_pre_jogo(PRE_JOGO)
+                status.configure(text="OCR parcial. Corrija os campos manualmente.")
 
-            partida = {
-                "competicao": dados_pre.get("competicao", ""),
-                "fase": dados_pre.get("fase", ""),
-                "data": dados_pre.get("data", ""),
-                "time_casa": dados_pre.get("time_casa", ""),
-                "time_fora": dados_pre.get("time_fora", ""),
-                "gols_casa": "",
-                "gols_fora": ""
-            }
+            except Exception as erro:
+                status.configure(text=f"Erro no OCR parcial: {erro}")
+                return
 
-            status.configure(text="OCR parcial. Corrija os campos manualmente.")
+        partida_extraida.clear()
+        partida_extraida.update(partida)
 
-        except Exception as erro:
-            status.configure(text=f"Erro no OCR parcial: {erro}")
-            return
+        preencher_campo(entrada_competicao, partida.get("competicao", ""))
+        preencher_campo(entrada_fase, partida.get("fase", ""))
+        preencher_campo(entrada_data, partida.get("data", ""))
+        preencher_campo(entrada_time_casa, partida.get("time_casa", ""))
+        preencher_campo(entrada_gols_casa, partida.get("gols_casa", ""))
+        preencher_campo(entrada_gols_fora, partida.get("gols_fora", ""))
+        preencher_campo(entrada_time_fora, partida.get("time_fora", ""))
 
-    partida_extraida.clear()
-    partida_extraida.update(partida)
-
-    preencher_campo(entrada_competicao, partida.get("competicao", ""))
-    preencher_campo(entrada_fase, partida.get("fase", ""))
-    preencher_campo(entrada_data, partida.get("data", ""))
-    preencher_campo(entrada_time_casa, partida.get("time_casa", ""))
-    preencher_campo(entrada_gols_casa, partida.get("gols_casa", ""))
-    preencher_campo(entrada_gols_fora, partida.get("gols_fora", ""))
-    preencher_campo(entrada_time_fora, partida.get("time_fora", ""))
-
-    status.configure(text="Prévia gerada. Corrija os campos se necessário antes de salvar.")
+        status.configure(text="Prévia gerada. Corrija os campos se necessário antes de salvar.")
 
     def confirmar_salvamento():
         ano = entrada_ano.get().strip()

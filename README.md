@@ -1,8 +1,8 @@
 # FC Career Tracker
 
-Aplicação desktop para monitoramento e análise de carreiras no **EA FC 26**, utilizando captura de tela, OCR e banco de dados local.
+Aplicação desktop desenvolvida em Python para monitoramento e análise de carreiras no **EA FC 26**, utilizando captura de tela, OCR e banco de dados local.
 
-O objetivo do projeto é permitir que jogadores do Modo Carreira acompanhem suas temporadas, partidas, estatísticas, histórico de clubes, seleções e títulos de forma prática, reduzindo a necessidade de planilhas e registros manuais.
+O objetivo do projeto é permitir que jogadores do Modo Carreira acompanhem suas temporadas, partidas, estatísticas, histórico de clubes, seleções e títulos de forma prática, eliminando a necessidade de planilhas e registros manuais.
 
 ---
 
@@ -10,13 +10,57 @@ O objetivo do projeto é permitir que jogadores do Modo Carreira acompanhem suas
 
 🚀 **Versão 0.6 Beta**
 
-O projeto já possui uma interface gráfica funcional com sistema de múltiplas carreiras, dashboard avançado, estatísticas detalhadas, histórico de clubes e seleções, títulos, OCR para importação de partidas, backup automático e exportação de dados.
-
-Atualmente o foco está na automação do OCR, melhorias visuais e expansão das estatísticas da temporada.
+O projeto já possui interface gráfica completa, sistema de múltiplas carreiras, dashboard avançado, estatísticas detalhadas, calendário de partidas, histórico de clubes e seleções, sistema de títulos, OCR para importação de partidas, backup automático e exportação de dados.
 
 ---
 
-## Funcionalidades Atuais
+## Screenshots
+
+### Dashboard
+
+![Dashboard](screenshots/dashboard.png)
+
+### Calendário
+
+![Calendário](screenshots/calendario.png)
+
+### OCR / Captura
+
+![OCR](screenshots/ocr.png)
+
+---
+
+## Destaques
+
+✅ Sistema de múltiplas carreiras
+
+✅ OCR para importação automática de partidas
+
+✅ Dashboard avançado
+
+✅ Calendário da carreira
+
+✅ Histórico de clubes e seleções
+
+✅ Hall da Fama
+
+✅ Estatísticas por competição
+
+✅ Estatísticas por adversário
+
+✅ Estatísticas por temporada
+
+✅ Sistema de títulos
+
+✅ Backup automático
+
+✅ Exportação CSV
+
+✅ Banco de dados local SQLite
+
+---
+
+## Funcionalidades
 
 ### Sistema de Carreiras
 
@@ -44,12 +88,13 @@ Atualmente o foco está na automação do OCR, melhorias visuais e expansão das
 * Listagem completa de partidas
 * Associação automática à carreira ativa
 
-### Estatísticas e Análises
+### Estatísticas
 
 * Estatísticas gerais da carreira
 * Estatísticas por time
 * Estatísticas por adversário
 * Estatísticas por competição
+* Estatísticas por temporada
 * Histórico completo de confrontos
 * Últimas partidas
 * Forma recente
@@ -83,6 +128,8 @@ Atualmente o foco está na automação do OCR, melhorias visuais e expansão das
 * Sequência de vitórias
 * Jogos sem vencer
 * Últimas partidas registradas
+* Melhor competição da carreira
+* Pior competição da carreira
 
 ### Sistema de Títulos
 
@@ -94,16 +141,24 @@ Atualmente o foco está na automação do OCR, melhorias visuais e expansão das
 * Contagem de conquistas
 * Exibição da última temporada conquistada
 
+### Hall da Fama
+
+* Ranking dos adversários com melhor aproveitamento
+* Ranking dos adversários com pior aproveitamento
+* Histórico de confrontos
+* Aproveitamento por adversário
+
 ### Calendário da Carreira
 
-* Visualização das partidas da carreira
-* Separação por data
-* Base pronta para calendário visual
+* Visualização mensal das partidas
+* Resultados coloridos
+* Identificação de partidas em casa e fora
+* Histórico por mês e temporada
 
 ### Configurações
 
 * Backup automático do banco de dados
-* Exportação de partidas em CSV
+* Exportação CSV
 * Limpeza de arquivos temporários
 * Informações do sistema
 
@@ -135,74 +190,10 @@ Atualmente o foco está na automação do OCR, melhorias visuais e expansão das
 
 * OpenCV
 
----
+### Controle de Versão
 
-## Roadmap
-
-### Versão 0.1 ✅ Concluída
-
-* Banco de dados SQLite
-* Cadastro manual de partidas
-* Estatísticas básicas
-* Menu em terminal
-
-### Versão 0.2 ✅ Concluída
-
-* Estatísticas por adversário
-* Melhor vitória
-* Pior derrota
-* Histórico de confrontos
-* Sequências de resultados
-
-### Versão 0.3 ✅ Concluída
-
-* Interface gráfica
-* Sistema de carreiras
-* Carreira ativa
-* Histórico de clubes
-* Histórico de seleções
-* Alteração de clubes e seleções
-
-### Versão 0.4 ✅ Concluída
-
-* OCR de partidas
-* Captura automática
-* Importação automática
-* Verificação de duplicidade
-
-### Versão 0.5 ✅ Concluída
-
-* Dashboard inicial
-* Sistema de títulos
-* Estatísticas por competição
-* Estatísticas por time
-* Histórico detalhado
-* Calendário da carreira
-
-### Versão 0.6 🚧 Em Desenvolvimento
-
-* [x] Nova interface
-* [x] Menu lateral
-* [x] Dashboard avançado
-* [x] Sistema de configurações
-* [x] Backup automático
-* [x] Exportação CSV
-* [x] Exclusão de carreiras
-* [ ] OCR integrado diretamente na interface
-* [ ] Estatísticas completas por temporada
-* [ ] Autocomplete de clubes e seleções
-* [ ] Escudos dos clubes
-* [ ] Escudos das seleções
-
-### Versão 1.0
-
-* Dashboard gráfico
-* Calendário visual completo
-* Classificações das competições
-* Estatísticas avançadas de temporada
-* Instalador Windows
-* Documentação completa
-* Primeira versão pública
+* Git
+* GitHub
 
 ---
 
@@ -265,45 +256,121 @@ python src/interface_v2.py
 python src/captura_teclas.py
 ```
 
-Atalhos:
+Atalhos disponíveis:
 
 ```text
-F7  -> Capturar tela pré-jogo
-F8  -> Capturar tela pós-jogo
-ESC -> Encerrar captura
+F7  → Capturar tela pré-jogo
+F8  → Capturar tela pós-jogo
+ESC → Encerrar captura
 ```
 
 ---
 
-## Observações sobre OCR
+## OCR de Partidas
 
-A importação automática depende da qualidade da captura.
+O sistema utiliza OCR para automatizar a importação das partidas.
 
-Para melhores resultados:
+Fluxo recomendado:
+
+1. Capturar a tela de pré-jogo
+2. Capturar a tela de pós-jogo
+3. Gerar prévia
+4. Conferir os dados detectados
+5. Corrigir manualmente se necessário
+6. Confirmar o salvamento
+
+### Recomendações
 
 * Utilizar o jogo em modo janela sem borda
-* Capturar o pré-jogo na tela de apresentação da partida
-* Capturar o pós-jogo em tela com placar visível
+* Capturar o pré-jogo na apresentação da partida
+* Capturar o pós-jogo com o placar visível
 * Conferir a prévia antes de salvar
-* Informar o ano da partida antes do salvamento
+* Informar o ano da partida antes da confirmação
 
 ---
 
-## Próximas Melhorias
+## Aprendizados
 
-* OCR totalmente integrado à interface
-* Calendário visual semelhante ao EA FC
-* Estatísticas completas por temporada
-* Escudos de clubes e seleções
+Durante o desenvolvimento do FC Career Tracker foram aplicados conceitos de:
+
+* Programação Orientada a Objetos
+* Banco de Dados SQLite
+* Estruturas de Dados
+* Processamento de Imagens
+* OCR com Tesseract
+* Desenvolvimento Desktop com Python
+* Controle de Versão com Git e GitHub
+* Arquitetura em Camadas
+* Manipulação de Arquivos
+* Interface Gráfica com CustomTkinter
+
+---
+
+## Roadmap
+
+### Versão 0.1 ✅
+
+* Banco de dados SQLite
+* Cadastro manual de partidas
+* Estatísticas básicas
+* Menu em terminal
+
+### Versão 0.2 ✅
+
+* Estatísticas por adversário
+* Melhor vitória
+* Pior derrota
+* Histórico de confrontos
+* Sequências de resultados
+
+### Versão 0.3 ✅
+
+* Interface gráfica
+* Sistema de carreiras
+* Histórico de clubes
+* Histórico de seleções
+
+### Versão 0.4 ✅
+
+* OCR de partidas
+* Captura automática
+* Importação automática
+* Verificação de duplicidade
+
+### Versão 0.5 ✅
+
+* Dashboard inicial
+* Sistema de títulos
+* Estatísticas por competição
+* Histórico detalhado
+* Calendário
+
+### Versão 0.6 ✅
+
+* Dashboard avançado
+* Hall da Fama
+* Calendário visual
+* Configurações
+* Backup automático
+* Exportação CSV
+* Exclusão de carreiras
+* OCR com prévia editável
+
+### Versão 1.0
+
 * Dashboard gráfico
-* Classificação das competições
-* Exportação avançada de dados
+* Calendário completo estilo EA FC
+* Estatísticas avançadas por temporada
+* Classificações das competições
+* Escudos de clubes e seleções
+* Instalador Windows
+* Primeira versão pública
 
 ---
 
 ## Aviso
 
-Este projeto é independente e não possui vínculo com a EA Sports ou com a franquia EA FC.
+Este projeto é independente e não possui qualquer vínculo com a EA Sports ou com a franquia EA FC.
 
 EA FC é uma marca registrada da Electronic Arts.
 
@@ -311,6 +378,10 @@ EA FC é uma marca registrada da Electronic Arts.
 
 ## Autor
 
-Desenvolvido por **Ronaldo Malta**
+**Ronaldo Malta**
 
-GitHub: https://github.com/ronaldomalta
+🎓 Ciência da Computação - UNICAP
+
+💻 Python • SQLite • OCR • CustomTkinter
+
+🔗 GitHub: https://github.com/ronaldomalta

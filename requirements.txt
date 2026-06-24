@@ -1,6 +1,7 @@
-pyautogui
-opencv-python
-numpy
+customtkinter
 pillow
-pytesseract
+pyautogui
 keyboard
+opencv-python
+pytesseract
+sqlite3
